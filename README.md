@@ -1,25 +1,22 @@
-# My Movie – Personal Unlimited Movie Hub
+# My Movie – movies + Live Sports (ad-free, personal use)
 
-Private, ad-free Android app (Kotlin, Jetpack Compose, Material 3, Media3, Room, Retrofit, Coil).
-No ad SDKs, no analytics, no tracking.
+Kotlin · Jetpack Compose · Material 3 · Media3 · Room · Retrofit · Coil · WorkManager. No ads, no analytics SDKs, no account.
 
-## Setup
-1. Open the `MyMovie` folder in Android Studio (Ladybug or newer, JDK 17). Let Gradle sync
-   (Studio creates the Gradle wrapper jar if missing).
-2. Get a **free TMDB API key (v3 "API Key")**: https://www.themoviedb.org/settings/api
-3. Either add it to `local.properties` (git-ignored):
-   `TMDB_API_KEY=your_key_here`
-   or paste it in the app under **Settings -> TMDB API key** (stored privately on the device).
-4. Run on a device/emulator with Android 7.0+ (API 24).
+## Build with GitHub Actions
+Push every file at the path shown, then open Actions -> "Build APK" -> download `MyMovie-debug-apk`.
+(`.github/workflows/main.yml` builds with Gradle 8.9 / JDK 17; no wrapper jar needed.)
 
-Without a key the app still opens: Free-to-watch (Internet Archive), My Library, local files
-and Downloads work; TMDB-powered screens show a clear "add your key" message.
+## First run
+Settings -> **TMDB account & API key**: tap *Get your free key*, paste the v3 key or v4 Read Access Token, *Test connection*, *Save*.
+Credentials are encrypted with the Android Keystore, never logged, never inside the APK.
+Live Sports works immediately (TheSportsDB free key). Optional keys in Settings -> Sports data:
+TheSportsDB premium (live scores, timelines) and football-data.org free (tables with form, top scorers, today's matches).
 
-## Where playable content comes from (only real, authorized sources)
-- **Internet Archive "feature_films"** – public-domain/openly hosted films (play and download).
-- **Your own sources** – any direct video link (.mp4/.m3u8/.mpd/...) you are licensed to use, or other
-  links opened in your browser; **video files from your device**, attached per title.
-- **Where to watch** – TMDB/JustWatch provider data for your region, opened in the provider's own app/site.
-If nothing is available for a title, the app says so; it never invents a stream.
+## Sources
+- **Full movie**: Internet Archive "Feature Films" items that pass checks (collection, not restricted/removed, real video file); licence shown; download only when licence metadata is explicit. Your own https direct links (you confirm authorization) and files from your device.
+- **Trailer / clip / preview**: YouTube videos from TMDB, labelled, opened externally.
+- **External viewing**: TMDB provider listings for your region.
+- **Live sports video**: only stream links you add that you are authorized to use. Nothing is invented.
 
-Downloads are offered only for Internet Archive items. Direct `http://` (non-HTTPS) links are blocked by Android's default policy.
+## Notes
+Downloads are resumable (HTTP Range) with a foreground notification. Free sports APIs have rate limits and no real-time scores; the app says so instead of faking data.
