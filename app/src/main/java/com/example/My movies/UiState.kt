@@ -29,9 +29,12 @@ sealed interface UiState<out T> {
 fun Throwable.toUiError(): UiState.Error = when (this) {
     is MissingApiKeyException ->
         UiState.Error("Add your free TMDB API key in Settings to load movie and series data.", true)
-    is HttpException ->
-        if (code() == 401) UiState.Error("TMDB rejected the API key. Check it in Settings.", true)
-        else UiState.Error("Server error (${code()}). Try again shortly.")
+    is HttpException -> when (code()) {
+        401 -> UiState.Error("The service rejected the credentials. Check them in Settings.", true)
+        403 -> UiState.Error("This feature or competition isn't included in the current data plan.")
+        429 -> UiState.Error("Request limit reached for the free plan. Wait a minute and retry.")
+        else -> UiState.Error("Server error (${code()}). Try again shortly.")
+    }
     is IOException -> UiState.Error("No connection. Check your network and try again.")
     else -> UiState.Error(message ?: "Something went wrong.")
 }
