@@ -6,6 +6,9 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
+import androidx.work.*
+import com.mymovie.app.work.RefreshWorker
+import java.util.concurrent.TimeUnit
 
 class MyMovieApp : Application(), ImageLoaderFactory {
     lateinit var container: AppContainer
@@ -14,6 +17,11 @@ class MyMovieApp : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "catalog_refresh", ExistingPeriodicWorkPolicy.KEEP,
+            PeriodicWorkRequestBuilder<RefreshWorker>(6, TimeUnit.HOURS)
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()).build()
+        )
     }
 
     override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)
