@@ -1,5 +1,6 @@
 package com.mymovie.app.data.remote
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -28,7 +29,12 @@ interface ArchiveApi {
 @Serializable data class ArchiveSearchResponse(val response: ArchiveResponse = ArchiveResponse())
 @Serializable data class ArchiveResponse(val docs: List<ArchiveDoc> = emptyList())
 @Serializable data class ArchiveDoc(val identifier: String, val title: JsonElement? = null, val year: JsonElement? = null)
-@Serializable data class ArchiveMetadata(val files: List<ArchiveFile> = emptyList())
+@Serializable
+data class ArchiveMetadata(
+    val files: List<ArchiveFile> = emptyList(),
+    val metadata: Map<String, JsonElement> = emptyMap(),
+    @SerialName("is_dark") val isDark: Boolean? = null
+)
 @Serializable data class ArchiveFile(val name: String, val format: String? = null, val size: String? = null)
 
 fun JsonElement?.asText(): String? = when (this) {
