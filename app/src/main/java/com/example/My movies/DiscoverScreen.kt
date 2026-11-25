@@ -33,14 +33,14 @@ val COUNTRIES = listOf(
     Option("India", "IN"), Option("China", "CN"), Option("Brazil", "BR"), Option("Canada", "CA"), Option("Australia", "AU")
 )
 
-class DiscoverViewModel(c: AppContainer, preset: String?) : ViewModel() {
+class DiscoverViewModel(c: AppContainer, preset: String?, presetCountry: String?, presetLang: String?) : ViewModel() {
     private val repo = c.repo
     var query by mutableStateOf("")
     var type by mutableStateOf(MediaType.MOVIE)
     var genre by mutableStateOf(Genres.byName(preset))
     var year by mutableStateOf("")
-    var language by mutableStateOf<Option?>(null)
-    var country by mutableStateOf<Option?>(null)
+    var language by mutableStateOf(LANGUAGES.firstOrNull { it.code == presetLang })
+    var country by mutableStateOf(COUNTRIES.firstOrNull { it.code == presetCountry })
     private var lastKey: String? = null
 
     val paginator = Paginator(viewModelScope) { page -> fetch(page) }
@@ -77,8 +77,8 @@ class DiscoverViewModel(c: AppContainer, preset: String?) : ViewModel() {
 }
 
 @Composable
-fun DiscoverScreen(presetGenre: String?, onItem: (MediaItem) -> Unit, onOpenSettings: () -> Unit) {
-    val vm = appViewModel(key = "discover-$presetGenre") { DiscoverViewModel(it, presetGenre) }
+fun DiscoverScreen(presetGenre: String?, presetCountry: String?, presetLang: String?, onItem: (MediaItem) -> Unit, onOpenSettings: () -> Unit) {
+    val vm = appViewModel(key = "discover-$presetGenre-$presetCountry-$presetLang") { DiscoverViewModel(it, presetGenre, presetCountry, presetLang) }
     LaunchedEffect(vm.query, vm.type, vm.genre, vm.year, vm.language, vm.country) {
         delay(400)
         vm.refreshIfNeeded()
