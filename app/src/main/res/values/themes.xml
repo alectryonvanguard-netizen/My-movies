@@ -1,8 +1,25 @@
+
 <resources>
-    <style name="Theme.MyMovie" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@android:color/black</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
+
+    <style name="Theme.MyMovie"
+        parent="android:Theme.Material.NoActionBar">
+
+        <!-- Cinematic dark background -->
+        <item name="android:windowBackground">#080D19</item>
+
+        <!-- System bars -->
+        <item name="android:statusBarColor">#080D19</item>
+        <item name="android:navigationBarColor">#080D19</item>
         <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+
+        <!-- App appearance -->
+        <item name="android:colorAccent">#36CFFF</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowActionModeOverlay">true</item>
+
+        <!-- Prevent a bright startup flash -->
+        <item name="android:windowDisablePreview">false</item>
     </style>
+
 </resources>
