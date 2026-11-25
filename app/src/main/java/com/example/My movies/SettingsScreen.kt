@@ -1,5 +1,7 @@
 package com.mymovie.app.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -12,6 +14,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import coil.imageLoader
 import com.mymovie.app.appContainer
+import com.mymovie.app.data.TestResult
+import com.mymovie.app.data.TmdbAuth
+import com.mymovie.app.data.remote.Network
+import com.mymovie.app.ui.components.DropdownChip
 import com.mymovie.app.ui.theme.TextDim
 import com.mymovie.app.ui.theme.VioletSoft
 import kotlinx.coroutines.launch
@@ -20,60 +26,124 @@ import kotlinx.coroutines.launch
 fun SettingsScreen() {
     val ctx = LocalContext.current
     val c = ctx.appContainer
+    val p = c.prefs
     val scope = rememberCoroutineScope()
-    var key by remember { mutableStateOf(c.prefs.tmdbKey) }
-    var language by remember { mutableStateOf(c.prefs.language) }
-    var region by remember { mutableStateOf(c.prefs.region) }
-    var saved by remember { mutableStateOf(c.prefs.hasKey) }
+    fun open(url: String) { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }
+    fun toast(s: String) = Toast.makeText(ctx, s, Toast.LENGTH_SHORT).show()
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    var cred by remember { mutableStateOf("") }
+    var configured by remember { mutableStateOf(p.hasKey) }
+    var status by remember { mutableStateOf<String?>(null) }
+    var testing by remember { mutableStateOf(false) }
+    var confirmRemove by remember { mutableStateOf(false) }
+    var tsdbKey by remember { mutableStateOf("") }
+    var fdKey by remember { mutableStateOf("") }
+    var language by remember { mutableStateOf(p.language) }
+    var region by remember { mutableStateOf(p.region) }
+    var preset by remember { mutableStateOf(p.qualityPreset) }
+    var audio by remember { mutableStateOf(p.audioLang) }
+    var subs by remember { mutableStateOf(p.subtitleLang) }
+
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Settings", style = MaterialTheme.typography.headlineMedium)
 
-        Text("TMDB API key", style = MaterialTheme.typography.titleMedium)
+        Text("TMDB account & API key", style = MaterialTheme.typography.titleMedium)
+        Text("Movie data comes from TMDB. Create a free account, then copy either the v3 API Key or the v4 Read Access Token from your API settings.", style = MaterialTheme.typography.bodySmall, color = TextDim)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { open("https://www.themoviedb.org/signup") }) { Text("Get your free key") }
+            OutlinedButton(onClick = { open("https://www.themoviedb.org/settings/api") }) { Text("API page") }
+        }
         Text(
-            "Movie, series and anime data comes from TMDB. Create a free account at themoviedb.org, open Settings → API, " +
-                "and paste the v3 \"API Key\" here. It is stored privately on this device only.",
-            style = MaterialTheme.typography.bodySmall, color = TextDim
+            status ?: if (configured) "Status: credentials saved (not tested in this session)" else "Status: not configured — TMDB screens are disabled",
+            color = if (configured && status?.startsWith("Invalid") != true) VioletSoft else MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge
         )
         OutlinedTextField(
-            key, { key = it }, singleLine = true, label = { Text("API key") },
-            visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth()
+            cred, { cred = it.trim() }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+            label = { Text(if (configured) "Replace API key or Read Access Token" else "API key or Read Access Token") },
+            visualTransformation = PasswordVisualTransformation()
         )
-        Text(if (saved) "Status: key set" else "Status: no key — TMDB screens are disabled", color = if (saved) VioletSoft else MaterialTheme.colorScheme.error,
-            style = MaterialTheme.typography.labelLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(enabled = cred.isNotBlank() && !testing, onClick = {
+                testing = true
+                scope.launch {
+                    status = when (val r = TmdbAuth.test(cred)) {
+                        TestResult.Ok -> "Connection OK — these credentials work"
+                        TestResult.Invalid -> "Invalid credentials — TMDB rejected them"
+                        is TestResult.Failed -> "Could not test: ${r.message}"
+                    }
+                    testing = false
+                }
+            }) { Text(if (testing) "Testing…" else "Test connection") }
+            Button(enabled = cred.isNotBlank(), onClick = {
+                if (p.saveTmdb(cred)) { configured = true; cred = ""; Network.forceRefresh(); status = "Saved securely on this device"; toast("Saved") } else toast("Could not save securely")
+            }) { Text(if (configured) "Replace" else "Save") }
+        }
+        if (configured) TextButton(onClick = { confirmRemove = true }) { Text("Remove credentials", color = MaterialTheme.colorScheme.error) }
 
+        HorizontalDivider()
+        Text("Sports data", style = MaterialTheme.typography.titleMedium)
+        Text("Works out of the box with TheSportsDB's free key (schedules, results, tables). Optional: your own TheSportsDB premium key (live scores, timelines) and a free football-data.org key (football tables, form, top scorers, today's matches).", style = MaterialTheme.typography.bodySmall, color = TextDim)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { open("https://www.thesportsdb.com/pricing") }) { Text("TheSportsDB") }
+            OutlinedButton(onClick = { open("https://www.football-data.org/client/register") }) { Text("football-data.org") }
+        }
+        OutlinedTextField(tsdbKey, { tsdbKey = it.trim() }, singleLine = true, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation(),
+            label = { Text(if (p.sportsDbKey != "123") "TheSportsDB key saved — replace" else "TheSportsDB premium key (optional)") })
+        OutlinedTextField(fdKey, { fdKey = it.trim() }, singleLine = true, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation(),
+            label = { Text(if (p.footballDataKey.isNotBlank()) "football-data.org key saved — replace" else "football-data.org key (optional)") })
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = {
+                if (tsdbKey.isNotBlank()) p.sportsDbKey = tsdbKey
+                if (fdKey.isNotBlank()) p.footballDataKey = fdKey
+                tsdbKey = ""; fdKey = ""; Network.forceRefresh(); toast("Saved. Reopen Live Sports to apply.")
+            }) { Text("Save sports keys") }
+            OutlinedButton(onClick = { p.sportsDbKey = ""; p.footballDataKey = ""; toast("Sports keys removed") }) { Text("Remove") }
+        }
+
+        HorizontalDivider()
+        Text("Playback preferences", style = MaterialTheme.typography.titleMedium)
+        val presets = listOf("AUTO" to "Auto", "DATA_SAVER" to "Data Saver", "BALANCED" to "Balanced", "HD" to "HD", "FULL" to "Full Quality")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            DropdownChip("Default quality", presets.map { it.second }, presets.indexOfFirst { it.first == preset }.takeIf { it > 0 }) {
+                val k = presets[it ?: 0].first; preset = k; p.qualityPreset = k
+            }
+            DropdownChip("Audio language", LANGUAGES.map { it.label }, LANGUAGES.indexOfFirst { it.code == audio }.takeIf { it >= 0 }) {
+                audio = it?.let { i -> LANGUAGES[i].code } ?: ""; p.audioLang = audio
+            }
+            DropdownChip("Subtitles", LANGUAGES.map { it.label }, LANGUAGES.indexOfFirst { it.code == subs }.takeIf { it >= 0 }) {
+                subs = it?.let { i -> LANGUAGES[i].code } ?: ""; p.subtitleLang = subs
+            }
+        }
+        Text("Quality presets only apply to sources that offer several qualities; the player lists what each source really provides.", style = MaterialTheme.typography.bodySmall, color = TextDim)
+
+        HorizontalDivider()
         Text("Content language & region", style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             OutlinedTextField(language, { language = it }, singleLine = true, label = { Text("Language (en-US)") }, modifier = Modifier.weight(1f))
             OutlinedTextField(region, { region = it.take(2) }, singleLine = true, label = { Text("Region (US)") }, modifier = Modifier.weight(1f))
         }
-        Button(onClick = {
-            c.prefs.tmdbKey = key
-            c.prefs.language = language
-            c.prefs.region = region
-            saved = c.prefs.hasKey
-            Toast.makeText(ctx, "Saved. Reopen screens to refresh.", Toast.LENGTH_SHORT).show()
-        }) { Text("Save") }
+        Button(onClick = { p.language = language; p.region = region; Network.forceRefresh(); toast("Saved") }) { Text("Save") }
 
         HorizontalDivider()
         Text("Data", style = MaterialTheme.typography.titleMedium)
-        OutlinedButton(onClick = {
-            scope.launch { c.db.dao().clearHistory() }
-            Toast.makeText(ctx, "Watch history cleared", Toast.LENGTH_SHORT).show()
-        }) { Text("Clear watch history") }
-        OutlinedButton(onClick = {
-            ctx.imageLoader.diskCache?.clear()
-            ctx.imageLoader.memoryCache?.clear()
-            Toast.makeText(ctx, "Image cache cleared", Toast.LENGTH_SHORT).show()
-        }) { Text("Clear image cache") }
+        OutlinedButton(onClick = { Network.forceRefresh(); toast("Next loads fetch fresh data") }) { Text("Refresh catalogue now") }
+        OutlinedButton(onClick = { scope.launch { c.db.dao().clearHistory() }; toast("Watch history cleared") }) { Text("Clear watch history") }
+        OutlinedButton(onClick = { scope.launch { c.db.dao().clearSearches() }; toast("Search history cleared") }) { Text("Clear search history") }
+        OutlinedButton(onClick = { ctx.imageLoader.diskCache?.clear(); ctx.imageLoader.memoryCache?.clear(); toast("Image cache cleared") }) { Text("Clear image cache") }
 
         HorizontalDivider()
         Text("About", style = MaterialTheme.typography.titleMedium)
         Text(
-            "My Movie is a private, ad-free player. It contains no advertising or analytics SDKs. Playable content comes only " +
-                "from sources you are authorized to use: public-domain films (Internet Archive), links you add, and files on your device. " +
-                "Provider listings open in the provider's own app or site.",
+            "My Movie has no advertising or analytics SDKs and needs no account. Personal data stays on this device. Full-length playback and downloads are offered only for sources that permit them; sports scores and schedules do not imply broadcast rights.",
             style = MaterialTheme.typography.bodySmall, color = TextDim
         )
     }
+
+    if (confirmRemove) AlertDialog(
+        onDismissRequest = { confirmRemove = false },
+        title = { Text("Remove TMDB credentials?") },
+        text = { Text("Movie data will stop loading until you add a key again. Cached pages stay available offline.") },
+        confirmButton = { TextButton(onClick = { p.tmdbCredential = ""; configured = false; status = null; confirmRemove = false }) { Text("Remove") } },
+        dismissButton = { TextButton(onClick = { confirmRemove = false }) { Text("Cancel") } }
+    )
 }
