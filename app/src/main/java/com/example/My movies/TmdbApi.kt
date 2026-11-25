@@ -28,6 +28,12 @@ interface TmdbApi {
     @GET("tv/{id}/season/{season}")
     suspend fun season(@Path("id") id: Int, @Path("season") season: Int): SeasonDto
 
+    @GET("search/person")
+    suspend fun searchPeople(@Query("query") query: String, @Query("page") page: Int): PagedResponse<PersonSummaryDto>
+
+    @GET("person/{id}")
+    suspend fun person(@Path("id") id: Int, @Query("append_to_response") append: String): PersonDto
+
     @GET("{type}/{id}/recommendations")
     suspend fun recommendations(@Path("type") type: String, @Path("id") id: Int): PagedResponse<MediaDto>
 }
