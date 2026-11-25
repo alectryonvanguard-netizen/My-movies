@@ -37,6 +37,7 @@ enum class Dest(val route: String, val label: String, val icon: ImageVector) {
     Movies("movies", "Movies", Icons.Filled.Movie),
     Tv("tv", "TV Series", Icons.Filled.Tv),
     Anime("anime", "Anime", Icons.Filled.Face),
+    Sports("sports", "Live Sports", Icons.Filled.SportsSoccer),
     Discover("discover", "Discover", Icons.Filled.Explore),
     Library("library", "My Library", Icons.Filled.Bookmark),
     Downloads("downloads", "Downloads", Icons.Filled.Download),
@@ -67,7 +68,7 @@ fun AppNav() {
             contentWindowInsets = WindowInsets.navigationBars,
             topBar = {
                 if (current != null && current != Dest.Discover) {
-                    TopBar(showMenu = !wide, onMenu = { scope.launch { drawerState.open() } }, onSearch = { go(Dest.Discover) })
+                    TopBar(showMenu = !wide, onMenu = { scope.launch { drawerState.open() } }, onSearch = { nav.navigate("search") })
                 }
             }
         ) { pad ->
@@ -86,13 +87,34 @@ fun AppNav() {
                 composable("tv") { CatalogScreen(CatalogKind.TV, { openItem(it.type, it.id) }, { go(Dest.Settings) }) }
                 composable("anime") { CatalogScreen(CatalogKind.ANIME, { openItem(it.type, it.id) }, { go(Dest.Settings) }) }
                 composable(
-                    "discover?genre={genre}",
-                    arguments = listOf(navArgument("genre") { type = NavType.StringType; nullable = true; defaultValue = null })
+                    "discover?genre={genre}&country={country}&lang={lang}",
+                    arguments = listOf("genre", "country", "lang").map { n -> navArgument(n) { type = NavType.StringType; nullable = true; defaultValue = null } }
                 ) { e ->
-                    DiscoverScreen(e.arguments?.getString("genre"), { openItem(it.type, it.id) }, { go(Dest.Settings) })
+                    DiscoverScreen(e.arguments?.getString("genre"), e.arguments?.getString("country"), e.arguments?.getString("lang"), { openItem(it.type, it.id) }, { go(Dest.Settings) })
                 }
-                composable("library") { LibraryScreen { openItem(it.type, it.id) } }
-                composable("downloads") { DownloadsScreen() }
+                composable(
+                    "sports?sel={sel}",
+                    arguments = listOf(navArgument("sel") { type = NavType.StringType; nullable = true; defaultValue = null })
+                ) { e -> SportsScreen(e.arguments?.getString("sel")) { go(Dest.Settings) } }
+                composable(
+                    "search?q={q}",
+                    arguments = listOf(navArgument("q") { type = NavType.StringType; nullable = true; defaultValue = null })
+                ) { e ->
+                    SearchScreen(
+                        initial = e.arguments?.getString("q"), onItem = { openItem(it.type, it.id) },
+                        onPerson = { nav.navigate("person/$it") },
+                        onLeague = { l -> nav.navigate("sports?sel=" + Uri.encode(listOf(l.provider, l.id, l.sport, l.name).joinToString("|"))) },
+                        onDiscover = { g, c, l ->
+                            nav.navigate("discover?" + listOfNotNull(g?.let { "genre=${Uri.encode(it)}" }, c?.let { "country=$it" }, l?.let { "lang=$it" }).joinToString("&"))
+                        },
+                        onOpenSettings = { go(Dest.Settings) }
+                    )
+                }
+                composable("person/{id}", arguments = listOf(navArgument("id") { type = NavType.IntType })) { e ->
+                    PersonScreen(e.arguments?.getInt("id") ?: 0, { nav.popBackStack() }, { openItem(it.type, it.id) }, { go(Dest.Settings) })
+                }
+                composable("library") { LibraryScreen({ openItem(it.type, it.id) }, { q -> nav.navigate("search?q=${Uri.encode(q)}") }) }
+                composable("downloads") { DownloadsScreen { t, id -> openItem(t, id) } }
                 composable("settings") { SettingsScreen() }
                 composable(
                     "detail/{type}/{id}",
@@ -106,6 +128,7 @@ fun AppNav() {
                         id = e.arguments?.getInt("id") ?: 0,
                         onBack = { nav.popBackStack() },
                         onItem = { openItem(it.type, it.id) },
+                        onPerson = { nav.navigate("person/$it") },
                         onOpenSettings = { go(Dest.Settings) }
                     )
                 }
