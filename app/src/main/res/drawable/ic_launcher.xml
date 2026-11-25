@@ -1,6 +1,82 @@
+
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp" android:height="108dp"
-    android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#000000" android:pathData="M0,0h108v108h-108z" />
-    <path android:fillColor="#7C3AED" android:pathData="M38,28 L82,54 L38,80 Z" />
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Cinematic dark background -->
+    <path
+        android:fillColor="#080D19"
+        android:pathData="M0,0 H108 V108 H0 Z" />
+
+    <!-- Outer metallic film reel -->
+    <path
+        android:fillColor="#263449"
+        android:strokeColor="#AAB8CB"
+        android:strokeWidth="2.5"
+        android:pathData="M54,27
+            A29,29 0,1 1,54 85
+            A29,29 0,1 1,54 27 Z" />
+
+    <!-- Inner reel surface -->
+    <path
+        android:fillColor="#101C30"
+        android:pathData="M54,33
+            A23,23 0,1 1,54 79
+            A23,23 0,1 1,54 33 Z" />
+
+    <!-- Reel openings -->
+    <path
+        android:fillColor="#AAB8CB"
+        android:pathData="M49,37
+            A5,5 0,1 1,59 37
+            A5,5 0,1 1,49 37 Z" />
+
+    <path
+        android:fillColor="#AAB8CB"
+        android:pathData="M49,75
+            A5,5 0,1 1,59 75
+            A5,5 0,1 1,49 75 Z" />
+
+    <path
+        android:fillColor="#AAB8CB"
+        android:pathData="M34,51
+            A5,5 0,1 1,44 51
+            A5,5 0,1 1,34 51 Z" />
+
+    <path
+        android:fillColor="#AAB8CB"
+        android:pathData="M64,51
+            A5,5 0,1 1,74 51
+            A5,5 0,1 1,64 51 Z" />
+
+    <!-- Central play symbol -->
+    <path
+        android:fillColor="#36CFFF"
+        android:strokeColor="#B9F1FF"
+        android:strokeWidth="1"
+        android:pathData="M47,44 L68,54 L47,65 Z" />
+
+    <!-- Clapperboard top -->
+    <path
+        android:fillColor="#DCE5F0"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:pathData="M27,17 L78,17 L83,29 L32,29 Z" />
+
+    <!-- Clapperboard dark stripes -->
+    <path
+        android:fillColor="#18263A"
+        android:pathData="M39,17 L49,17 L44,29 L34,29 Z" />
+
+    <path
+        android:fillColor="#18263A"
+        android:pathData="M62,17 L72,17 L77,29 L67,29 Z" />
+
+    <!-- Bottom cinematic accent -->
+    <path
+        android:fillColor="#36CFFF"
+        android:pathData="M37,91 H71 V94 H37 Z" />
+
 </vector>
