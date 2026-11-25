@@ -2,6 +2,7 @@
 
 package com.mymovie.app.ui.screens
 
+import com.mymovie.app.web.WebActivity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -128,6 +129,7 @@ private fun DetailContent(vm: DetailViewModel, d: MediaDetail, onItem: (MediaIte
     val entry by vm.libraryEntry.collectAsStateWithLifecycle()
     val episodes by vm.episodes.collectAsStateWithLifecycle()
     var sheet by remember { mutableStateOf<Pair<Int, Episode>?>(null) }
+    var playingVideo by remember { mutableStateOf<VideoInfo?>(null) }
     val item = d.item
     val isTv = item.type == MediaType.TV
 
@@ -216,12 +218,12 @@ private fun DetailContent(vm: DetailViewModel, d: MediaDetail, onItem: (MediaIte
         if (d.videos.isNotEmpty()) item {
             Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionTitle("Trailers, clips & previews")
-                Text("These are promotional videos on YouTube, not the full movie.", style = MaterialTheme.typography.bodySmall, color = TextDim)
+                Text("These are promotional videos played with YouTube's embedded player, not the full movie.", style = MaterialTheme.typography.bodySmall, color = TextDim)
                 d.videos.take(8).forEach { v ->
                     SourceCard(
                         badge = v.kind.label.uppercase(), badgeColor = if (v.kind == VideoKind.TRAILER || v.kind == VideoKind.TEASER) KindTrailer else KindClip,
-                        title = v.name, caption = "Opens YouTube (external)",
-                        onPlay = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(v.url))) } }
+                        title = v.name, caption = "Plays inside the app (YouTube player)",
+                        onPlay = { playingVideo = v }
                     )
                 }
             }
@@ -242,6 +244,8 @@ private fun DetailContent(vm: DetailViewModel, d: MediaDetail, onItem: (MediaIte
         item { MediaRow("Similar", d.similar, onItem) }
         item { MediaRow("Recommended", d.recommended, onItem) }
     }
+
+    playingVideo?.let { v -> YouTubePlayerDialog(v.key, v.name) { playingVideo = null } }
 
     sheet?.let { (season, ep) ->
         ModalBottomSheet(onDismissRequest = { sheet = null }, containerColor = Charcoal) {
@@ -292,7 +296,7 @@ private fun ProvidersBlock(p: Providers?) {
         if (p.free.isEmpty() && p.subscription.isEmpty() && p.rentBuy.isEmpty())
             Text("Not currently listed on any provider in your region.", color = TextDim, style = MaterialTheme.typography.bodySmall)
         p.link?.let { link ->
-            OutlinedButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link))) } }) {
+            OutlinedButton(onClick = { WebActivity.open(ctx, link, "Where to watch") }) {
                 Icon(Icons.Filled.OpenInNew, null); Spacer(Modifier.width(6.dp)); Text("Open provider page")
             }
         }
@@ -352,7 +356,7 @@ private fun SourcesPanel(vm: DetailViewModel, d: MediaDetail, mediaKey: String, 
                 val isFile = s.url.startsWith("content://") || s.url.startsWith("file://")
                 SourceCard(
                     badge = if (direct) "FULL MOVIE" else "EXTERNAL", badgeColor = if (direct) KindFull else KindExternal, title = s.label,
-                    caption = if (isFile) "File on this device" else if (direct) "Direct link you added (plays in app)" else "Opens in your browser or provider app",
+                    caption = if (isFile) "File on this device" else if (direct) "Direct link you added (plays in app)" else "Opens inside the app",
                     onPlay = { PlayerLauncher.openSource(ctx, s, playTitle, mediaKey, d.item.key, subtitle, poster, backdrop) },
                     onDelete = { vm.deleteSource(s.id) }
                 )
