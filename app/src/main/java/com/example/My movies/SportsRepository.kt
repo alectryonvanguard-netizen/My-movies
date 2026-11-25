@@ -305,36 +305,41 @@ class SportsRepository(
                 offset to sportName
             }
         }.map { (offset, sportName) ->
-            async {
+            async<List<TsdbEvent>> {
                 runCatching {
                     val response = tsdb.eventsDay(
                         key,
                         dayString(offset),
                         sportName
                     )
-                    response.events ?: response.event ?: emptyList()
-                }.getOrDefault(emptyList())
+                    response.events ?: response.event ?: emptyList<TsdbEvent>()
+                }.getOrDefault(emptyList<TsdbEvent>())
             }
         }
 
         val fdToday = if (sport.label == "Football" && hasFd) {
-            async {
+            async<List<SportEvent>> {
                 runCatching {
                     fd.matchesBetween(
                         dayString(-1),
                         dayString(1)
                     ).matches.map { it.toEvent() }
-                }.getOrDefault(emptyList())
+                }.getOrDefault(emptyList<SportEvent>())
             }
-        } else null
+        } else {
+            null
+        }
 
         val live = if (premiumTsdb && sport.tsdb.isNotEmpty()) {
-            async {
+            async<List<TsdbEvent>> {
                 runCatching {
-                    tsdb.live(sport.tsdb.first()).livescore.orEmpty()
-                }.getOrDefault(emptyList())
+                    tsdb.live(sport.tsdb.first())
+                        .livescore.orEmpty()
+                }.getOrDefault(emptyList<TsdbEvent>())
             }
-        } else null
+        } else {
+            null
+        }
 
         var events: List<SportEvent> =
             tsEvents.flatMap { it.await() }
@@ -346,10 +351,12 @@ class SportsRepository(
                         }
                 }
                 .mapNotNull { event -> event.toEvent() } +
-                (fdToday?.await() ?: emptyList())
+                (fdToday?.await() ?: emptyList<SportEvent>())
 
-        val liveEvents = live?.await().orEmpty()
-            .mapNotNull { event -> event.toEvent() }
+        val liveEvents: List<SportEvent> =
+            live?.await()
+                .orEmpty()
+                .mapNotNull { event -> event.toEvent() }
 
         liveEvents.forEach { event ->
             events = events.filterNot {
