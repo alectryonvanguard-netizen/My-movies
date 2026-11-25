@@ -3,6 +3,7 @@ package com.mymovie.app.ui.screens
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.content.Intent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -33,6 +34,7 @@ import com.mymovie.app.data.local.LocalVideoEntity
 import com.mymovie.app.data.toItem
 import com.mymovie.app.player.PlayerLauncher
 import com.mymovie.app.ui.appViewModel
+import com.mymovie.app.ui.screens.DownloadRow
 import com.mymovie.app.ui.components.PosterCard
 import com.mymovie.app.ui.theme.CardColor
 import com.mymovie.app.ui.theme.TextDim
@@ -49,6 +51,11 @@ class LibraryViewModel(c: AppContainer) : ViewModel() {
     val favourites = dao.favourites().map { l -> l.map { it.toItem() } }.hot(emptyList())
     val history = dao.history().hot(emptyList())
     val local = dao.localVideos().hot(emptyList())
+    val downloads = dao.downloads().hot(emptyList())
+    val searches = dao.searchHistory().hot(emptyList())
+    private val dl = c.downloader
+    fun deleteDownload(id: Long) { viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { dl.delete(id) } }
+    fun deleteSearch(t: String) { viewModelScope.launch { dao.deleteSearch(t) } }
 
     fun removeHistory(uid: String) = viewModelScope.launch { dao.deleteHistory(uid) }
     fun removeLocal(uri: String) = viewModelScope.launch { dao.deleteLocal(uri) }
@@ -56,9 +63,9 @@ class LibraryViewModel(c: AppContainer) : ViewModel() {
 }
 
 @Composable
-fun LibraryScreen(onItem: (MediaItem) -> Unit) {
+fun LibraryScreen(onItem: (MediaItem) -> Unit, onSearch: (String) -> Unit) {
     val vm = appViewModel { LibraryViewModel(it) }
-    val tabs = listOf("Watchlist", "Favourites", "History", "My files")
+    val tabs = listOf("Watchlist", "Favourites", "Recent", "Offline", "My files", "Searches")
     var tab by rememberSaveable { mutableStateOf(0) }
     val ctx = LocalContext.current
     Column(Modifier.fillMaxSize()) {
@@ -75,7 +82,28 @@ fun LibraryScreen(onItem: (MediaItem) -> Unit) {
                     items(h, key = { it.uid }) { HistoryRow(it, { PlayerLauncher.playHistory(ctx, it) }, { vm.removeHistory(it.uid) }) }
                 }
             }
-            else -> LocalFiles(vm)
+            3 -> {
+                val dl by vm.downloads.collectAsStateWithLifecycle()
+                val done = dl.filter { it.status == "COMPLETED" }
+                if (done.isEmpty()) Empty("Downloaded movies appear here and play offline.") else LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(done, key = { it.id }) { e ->
+                        DownloadRow(e, { PlayerLauncher.play(ctx, android.net.Uri.fromFile(java.io.File(e.filePath)).toString(), e.title, "dl:${e.id}", e.mediaKey ?: "dl:${e.id}", poster = e.posterUrl) },
+                            {}, {}, { vm.deleteDownload(e.id) }, null)
+                    }
+                }
+            }
+            4 -> LocalFiles(vm)
+            else -> {
+                val sh by vm.searches.collectAsStateWithLifecycle()
+                if (sh.isEmpty()) Empty("Your searches are saved only on this device.") else LazyColumn(contentPadding = PaddingValues(16.dp)) {
+                    items(sh, key = { it.term }) { h ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(h.term, Modifier.weight(1f).clickable { onSearch(h.term) }.padding(vertical = 12.dp))
+                            IconButton(onClick = { vm.deleteSearch(h.term) }) { Icon(Icons.Filled.Delete, "Remove") }
+                        }
+                    }
+                }
+            }
         }
     }
 }
