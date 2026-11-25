@@ -72,8 +72,35 @@ interface AppDao {
     @Query("SELECT * FROM downloads ORDER BY addedAt DESC")
     fun downloads(): Flow<List<DownloadEntity>>
 
-    @Upsert suspend fun upsertDownload(e: DownloadEntity)
+    @Query("SELECT * FROM downloads WHERE id = :id")
+    suspend fun getDownload(id: Long): DownloadEntity?
 
-    @Query("DELETE FROM downloads WHERE dmId = :id")
+    @Query("SELECT * FROM downloads WHERE url = :url LIMIT 1")
+    suspend fun downloadByUrl(url: String): DownloadEntity?
+
+    @Query("SELECT * FROM downloads WHERE status IN ('QUEUED','RUNNING')")
+    suspend fun activeDownloads(): List<DownloadEntity>
+
+    @Insert suspend fun insertDownload(e: DownloadEntity): Long
+
+    @Query("UPDATE downloads SET downloadedBytes = :done, totalBytes = :total, status = :status WHERE id = :id")
+    suspend fun setProgress(id: Long, done: Long, total: Long, status: String)
+
+    @Query("UPDATE downloads SET status = 'PAUSED' WHERE status IN ('QUEUED','RUNNING')")
+    suspend fun pauseAllActive()
+
+    @Query("DELETE FROM downloads WHERE id = :id")
     suspend fun deleteDownload(id: Long)
+
+    // Search history
+    @Query("SELECT * FROM search_history ORDER BY updatedAt DESC LIMIT 40")
+    fun searchHistory(): Flow<List<SearchHistoryEntity>>
+
+    @Upsert suspend fun upsertSearch(e: SearchHistoryEntity)
+
+    @Query("DELETE FROM search_history WHERE term = :term")
+    suspend fun deleteSearch(term: String)
+
+    @Query("DELETE FROM search_history")
+    suspend fun clearSearches()
 }
