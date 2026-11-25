@@ -45,7 +45,6 @@ import com.mymovie.app.AppContainer
 import com.mymovie.app.appContainer
 import com.mymovie.app.data.*
 import com.mymovie.app.data.local.SourceEntity
-import com.mymovie.app.downloads.DownloadHelper
 import com.mymovie.app.player.PlayerLauncher
 import com.mymovie.app.ui.*
 import com.mymovie.app.ui.components.*
@@ -60,12 +59,11 @@ fun Context.displayName(uri: Uri): String =
     contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
         ?.use { if (it.moveToFirst()) it.getString(0) else null } ?: uri.lastPathSegment ?: "Video"
 
-class DetailViewModel(private val c: AppContainer, val type: MediaType, val id: Int) : ViewModel() {
+class DetailViewModel(c: AppContainer, val type: MediaType, val id: Int) : ViewModel() {
     private val repo = c.repo
     val state = MutableStateFlow<UiState<MediaDetail>>(UiState.Loading)
     val libraryEntry = repo.libraryItem("${type.path}:$id").stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
-    val recommendations = MutableStateFlow<List<MediaItem>>(emptyList())
-    val free = MutableStateFlow<List<FreeItem>>(emptyList())
+    val free = MutableStateFlow<UiState<List<VerifiedFree>>>(UiState.Loading)
     val episodes = MutableStateFlow<UiState<List<Episode>>>(UiState.Loading)
     var season by mutableIntStateOf(1); private set
 
@@ -78,12 +76,9 @@ class DetailViewModel(private val c: AppContainer, val type: MediaType, val id: 
             state.value = r
             if (r is UiState.Success) {
                 val d = r.data
-                launch { recommendations.value = runCatching { repo.recommendations(type, id) }.getOrDefault(emptyList()) }
                 if (type == MediaType.MOVIE) {
-                    launch { free.value = runCatching { repo.findFree(d.item.title, d.item.year) }.getOrDefault(emptyList()) }
-                } else {
-                    d.seasons.firstOrNull()?.let { selectSeason(it.number) }
-                }
+                    launch { free.value = runUi { repo.findVerifiedFree(d.item.title, d.item.year) } }
+                } else d.seasons.firstOrNull()?.let { selectSeason(it.number) }
             }
         }
     }
@@ -94,29 +89,22 @@ class DetailViewModel(private val c: AppContainer, val type: MediaType, val id: 
         viewModelScope.launch { episodes.value = runUi { repo.season(id, n) } }
     }
 
-    fun toggleWatchlist(item: MediaItem) = viewModelScope.launch {
-        repo.setFlags(item, watchlist = libraryEntry.value?.inWatchlist != true)
-    }
-
-    fun toggleFavourite(item: MediaItem) = viewModelScope.launch {
-        repo.setFlags(item, favorite = libraryEntry.value?.isFavorite != true)
-    }
-
+    fun toggleWatchlist(item: MediaItem) = viewModelScope.launch { repo.setFlags(item, watchlist = libraryEntry.value?.inWatchlist != true) }
+    fun toggleFavourite(item: MediaItem) = viewModelScope.launch { repo.setFlags(item, favorite = libraryEntry.value?.isFavorite != true) }
     fun sources(key: String): Flow<List<SourceEntity>> = repo.sources(key)
     fun addLink(key: String, label: String, url: String) = viewModelScope.launch { repo.addSource(key, label, url) }
-    fun addLocal(key: String, label: String, uri: String) = viewModelScope.launch { repo.addSource(key, label, uri) }
     fun deleteSource(id: Long) = viewModelScope.launch { repo.deleteSource(id) }
 }
 
 @Composable
-fun DetailScreen(type: MediaType, id: Int, onBack: () -> Unit, onItem: (MediaItem) -> Unit, onOpenSettings: () -> Unit) {
+fun DetailScreen(type: MediaType, id: Int, onBack: () -> Unit, onItem: (MediaItem) -> Unit, onPerson: (Int) -> Unit, onOpenSettings: () -> Unit) {
     val vm = appViewModel(key = "detail-${type.path}-$id") { DetailViewModel(it, type, id) }
     val state by vm.state.collectAsStateWithLifecycle()
     Box(Modifier.fillMaxSize()) {
         when (val s = state) {
             UiState.Loading -> CenteredLoading(Modifier.align(Alignment.Center))
             is UiState.Error -> ErrorView(s, vm::load, onOpenSettings, Modifier.align(Alignment.Center))
-            is UiState.Success -> DetailContent(vm, s.data, onItem)
+            is UiState.Success -> DetailContent(vm, s.data, onItem, onPerson)
         }
         IconButton(
             onClick = onBack,
@@ -126,10 +114,18 @@ fun DetailScreen(type: MediaType, id: Int, onBack: () -> Unit, onItem: (MediaIte
 }
 
 @Composable
-private fun DetailContent(vm: DetailViewModel, d: MediaDetail, onItem: (MediaItem) -> Unit) {
+private fun Fact(label: String, value: String) {
+    if (value.isBlank()) return
+    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+        Text(label, color = TextDim, style = MaterialTheme.typography.labelLarge, modifier = Modifier.width(120.dp))
+        Text(value, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun DetailContent(vm: DetailViewModel, d: MediaDetail, onItem: (MediaItem) -> Unit, onPerson: (Int) -> Unit) {
     val ctx = LocalContext.current
     val entry by vm.libraryEntry.collectAsStateWithLifecycle()
-    val recs by vm.recommendations.collectAsStateWithLifecycle()
     val episodes by vm.episodes.collectAsStateWithLifecycle()
     var sheet by remember { mutableStateOf<Pair<Int, Episode>?>(null) }
     val item = d.item
@@ -144,46 +140,62 @@ private fun DetailContent(vm: DetailViewModel, d: MediaDetail, onItem: (MediaIte
         }
         item {
             Column(Modifier.padding(horizontal = 16.dp).offset(y = (-40).dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(item.title, style = MaterialTheme.typography.headlineMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
+                    AsyncImage(item.posterUrl, null, Modifier.width(96.dp).aspectRatio(2f / 3f).clip(RoundedCornerShape(12.dp)).background(CardColor), contentScale = ContentScale.Crop)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(item.title, style = MaterialTheme.typography.headlineMedium)
+                        if (d.originalTitle.isNotBlank() && d.originalTitle != item.title) Text(d.originalTitle, color = TextDim, style = MaterialTheme.typography.labelLarge)
+                        Text(
+                            listOfNotNull(if (item.rating > 0) "★ %.1f".format(item.rating) else null, item.year.ifBlank { null },
+                                d.runtime?.let { "$it min" }, d.genres.take(3).joinToString(", ").ifBlank { null }).joinToString("  •  "),
+                            style = MaterialTheme.typography.labelLarge, color = VioletSoft
+                        )
+                    }
+                }
                 if (d.tagline.isNotBlank()) Text(d.tagline, fontStyle = FontStyle.Italic, color = TextDim)
-                val meta = listOfNotNull(
-                    if (item.rating > 0) "★ %.1f".format(item.rating) else null,
-                    item.year.ifBlank { null },
-                    d.runtime?.let { "$it min" },
-                    d.genres.take(3).joinToString(", ").ifBlank { null }
-                ).joinToString("  •  ")
-                Text(meta, style = MaterialTheme.typography.labelLarge, color = VioletSoft)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     val wl = entry?.inWatchlist == true
                     val fav = entry?.isFavorite == true
                     FilledTonalButton(onClick = { vm.toggleWatchlist(item) }) {
-                        Icon(if (wl) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder, null)
-                        Spacer(Modifier.width(6.dp)); Text(if (wl) "In watchlist" else "Watchlist")
+                        Icon(if (wl) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder, null); Spacer(Modifier.width(6.dp)); Text(if (wl) "In watchlist" else "Watchlist")
                     }
                     FilledTonalButton(onClick = { vm.toggleFavourite(item) }) {
-                        Icon(if (fav) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder, null)
-                        Spacer(Modifier.width(6.dp)); Text(if (fav) "Favourite" else "Favourite")
-                    }
-                    d.trailerKey?.let { key ->
-                        OutlinedButton(onClick = {
-                            runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=$key"))) }
-                        }) { Icon(Icons.Filled.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text("Trailer") }
+                        Icon(if (fav) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder, null); Spacer(Modifier.width(6.dp)); Text("Favourite")
                     }
                 }
                 if (item.overview.isNotBlank()) Text(item.overview, style = MaterialTheme.typography.bodyMedium, color = Color(0xFFD0D0DC))
+                if (d.altTitles.isNotEmpty()) Text("Also known as: " + d.altTitles.joinToString(" • "), style = MaterialTheme.typography.bodySmall, color = TextDim)
+            }
+        }
+        item {
+            Column(Modifier.padding(horizontal = 16.dp).offset(y = (-30).dp)) {
+                SectionTitle("Details")
+                Fact("Release date", d.releaseDate)
+                Fact("Director", d.directors.joinToString(", "))
+                Fact("Runtime", d.runtime?.let { "$it min" }.orEmpty())
+                Fact("Status", d.status)
+                Fact("Original language", d.originalLanguage)
+                Fact("Spoken languages", d.languages.joinToString(", "))
+                Fact("Countries", d.countries.joinToString(", "))
+                Fact("Rating", if (item.rating > 0) "%.1f / 10 (%d votes)".format(item.rating, d.voteCount) else "")
+                Fact("Popularity", "%.0f".format(d.popularity))
+            }
+        }
+        if (d.crew.isNotEmpty()) item {
+            Column(Modifier.padding(horizontal = 16.dp).offset(y = (-30).dp)) {
+                SectionTitle("Crew")
+                d.crew.forEach { Fact(it.job, it.name) }
             }
         }
         if (!isTv) item {
             Column(Modifier.padding(horizontal = 16.dp).offset(y = (-30).dp)) {
-                Text("Watch", style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.height(8.dp))
+                SectionTitle("Watch")
                 SourcesPanel(vm, d, item.key, item.title, null, showFree = true, showProviders = true)
             }
         } else {
             item {
                 Column(Modifier.padding(horizontal = 16.dp).offset(y = (-30).dp)) {
-                    Text("Where to watch", style = MaterialTheme.typography.titleLarge)
-                    Spacer(Modifier.height(8.dp))
+                    SectionTitle("External viewing options")
                     ProvidersBlock(d.providers)
                 }
             }
@@ -191,17 +203,26 @@ private fun DetailContent(vm: DetailViewModel, d: MediaDetail, onItem: (MediaIte
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SectionHeader("Seasons & episodes")
                     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(d.seasons, key = { it.number }) { s ->
-                            FilterChip(vm.season == s.number, { vm.selectSeason(s.number) }, { Text("Season ${s.number}") })
-                        }
+                        items(d.seasons, key = { it.number }) { s -> FilterChip(vm.season == s.number, { vm.selectSeason(s.number) }, { Text("Season ${s.number}") }) }
                     }
                 }
             }
             when (val e = episodes) {
                 UiState.Loading -> item { CenteredLoading() }
                 is UiState.Error -> item { ErrorView(e, { vm.selectSeason(vm.season) }, {}) }
-                is UiState.Success -> items(e.data, key = { "ep-${vm.season}-${it.number}" }) { ep ->
-                    EpisodeRow(ep) { sheet = vm.season to ep }
+                is UiState.Success -> items(e.data, key = { "ep-${vm.season}-${it.number}" }) { ep -> EpisodeRow(ep) { sheet = vm.season to ep } }
+            }
+        }
+        if (d.videos.isNotEmpty()) item {
+            Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SectionTitle("Trailers, clips & previews")
+                Text("These are promotional videos on YouTube, not the full movie.", style = MaterialTheme.typography.bodySmall, color = TextDim)
+                d.videos.take(8).forEach { v ->
+                    SourceCard(
+                        badge = v.kind.label.uppercase(), badgeColor = if (v.kind == VideoKind.TRAILER || v.kind == VideoKind.TEASER) KindTrailer else KindClip,
+                        title = v.name, caption = "Opens YouTube (external)",
+                        onPlay = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(v.url))) } }
+                    )
                 }
             }
         }
@@ -209,8 +230,8 @@ private fun DetailContent(vm: DetailViewModel, d: MediaDetail, onItem: (MediaIte
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionHeader("Cast")
                 LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    items(d.cast, key = { it.name + it.character }) { m ->
-                        Column(Modifier.width(80.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    items(d.cast, key = { it.id.toString() + it.name + it.character }) { m ->
+                        Column(Modifier.width(80.dp).clickable(enabled = m.id > 0) { onPerson(m.id) }, horizontalAlignment = Alignment.CenterHorizontally) {
                             AsyncImage(m.photoUrl, m.name, Modifier.size(72.dp).clip(CircleShape).background(CardColor), contentScale = ContentScale.Crop)
                             Text(m.name, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall)
                         }
@@ -218,7 +239,8 @@ private fun DetailContent(vm: DetailViewModel, d: MediaDetail, onItem: (MediaIte
                 }
             }
         }
-        item { MediaRow("More like this", recs, onItem) }
+        item { MediaRow("Similar", d.similar, onItem) }
+        item { MediaRow("Recommended", d.recommended, onItem) }
     }
 
     sheet?.let { (season, ep) ->
@@ -234,15 +256,17 @@ private fun DetailContent(vm: DetailViewModel, d: MediaDetail, onItem: (MediaIte
 }
 
 @Composable
+private fun SectionTitle(t: String) {
+    Text(t, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 8.dp))
+}
+
+@Composable
 private fun EpisodeRow(ep: Episode, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
         AsyncImage(ep.stillUrl, ep.name, Modifier.width(120.dp).height(68.dp).clip(RoundedCornerShape(12.dp)).background(CardColor), contentScale = ContentScale.Crop)
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text("${ep.number}. ${ep.name}", maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge)
-            Text(
-                listOfNotNull(ep.runtime?.let { "$it min" }, ep.airDate).joinToString(" • "),
-                style = MaterialTheme.typography.labelSmall, color = TextDim
-            )
+            Text(listOfNotNull(ep.runtime?.let { "$it min" }, ep.airDate).joinToString(" • "), style = MaterialTheme.typography.labelSmall, color = TextDim)
             if (ep.overview.isNotBlank()) Text(ep.overview, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall, color = TextDim)
         }
         Icon(Icons.Filled.PlayCircle, "Sources", tint = VioletSoft)
@@ -259,15 +283,14 @@ private fun ProvidersBlock(p: Providers?) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf("Free / with ads" to p.free, "Subscription" to p.subscription, "Rent or buy" to p.rentBuy).forEach { (label, names) ->
             if (names.isNotEmpty()) {
-                Text(label, style = MaterialTheme.typography.labelLarge, color = TextDim)
+                Row(verticalAlignment = Alignment.CenterVertically) { SourceBadge("EXTERNAL", KindExternal); Spacer(Modifier.width(8.dp)); Text(label, style = MaterialTheme.typography.labelLarge, color = TextDim) }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     names.forEach { SuggestionChip(onClick = {}, label = { Text(it) }) }
                 }
             }
         }
-        if (p.free.isEmpty() && p.subscription.isEmpty() && p.rentBuy.isEmpty()) {
+        if (p.free.isEmpty() && p.subscription.isEmpty() && p.rentBuy.isEmpty())
             Text("Not currently listed on any provider in your region.", color = TextDim, style = MaterialTheme.typography.bodySmall)
-        }
         p.link?.let { link ->
             OutlinedButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link))) } }) {
                 Icon(Icons.Filled.OpenInNew, null); Spacer(Modifier.width(6.dp)); Text("Open provider page")
@@ -276,12 +299,9 @@ private fun ProvidersBlock(p: Providers?) {
     }
 }
 
-/** Every playable option for a title/episode. Only real, authorized sources are listed. */
+/** Playable options: verified Internet Archive films, your own links/files, and external options. Nothing is invented. */
 @Composable
-private fun SourcesPanel(
-    vm: DetailViewModel, d: MediaDetail, mediaKey: String, playTitle: String, subtitle: String?,
-    showFree: Boolean, showProviders: Boolean
-) {
+private fun SourcesPanel(vm: DetailViewModel, d: MediaDetail, mediaKey: String, playTitle: String, subtitle: String?, showFree: Boolean, showProviders: Boolean) {
     val ctx = LocalContext.current
     val container = ctx.appContainer
     val scope = rememberCoroutineScope()
@@ -291,108 +311,62 @@ private fun SourcesPanel(
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching { ctx.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
-            vm.addLocal(mediaKey, ctx.displayName(uri), uri.toString())
+            vm.addLink(mediaKey, ctx.displayName(uri), uri.toString())
         }
     }
     val poster = d.item.posterUrl
     val backdrop = d.item.backdropUrl
+    val verified = (free as? UiState.Success)?.data.orEmpty()
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        if (showProviders) ProvidersBlock(d.providers)
-
-        if (showFree && free.isNotEmpty()) {
-            Text("Free · public domain (Internet Archive)", style = MaterialTheme.typography.labelLarge, color = TextDim)
-            free.forEach { f ->
-                SourceCard(
-                    icon = Icons.Filled.Public, title = "${f.title}${f.year?.let { " ($it)" } ?: ""}", caption = "Internet Archive",
-                    onPlay = {
-                        scope.launch {
-                            if (!PlayerLauncher.playFree(ctx, container.repo, f, mediaKey, d.item.key, playTitle, poster, backdrop))
-                                Toast.makeText(ctx, "No playable file found for this item.", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    onDownload = {
-                        scope.launch {
-                            val ok = DownloadHelper.downloadFree(container, f, playTitle)
-                            Toast.makeText(ctx, if (ok) "Download started" else "No downloadable file found", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                )
+        if (showFree) {
+            when (free) {
+                UiState.Loading -> Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp); Spacer(Modifier.width(8.dp))
+                    Text("Checking free and public-domain sources…", color = TextDim, style = MaterialTheme.typography.bodySmall)
+                }
+                else -> verified.forEach { v ->
+                    SourceCard(
+                        badge = "FULL MOVIE", badgeColor = KindFull,
+                        title = "${v.item.title}${v.item.year?.let { " ($it)" } ?: ""} · Internet Archive",
+                        caption = "Rights: ${v.rights}" + if (!v.downloadable) "\nDownload not offered (no explicit licence)" else "",
+                        onPlay = { PlayerLauncher.play(ctx, v.url, playTitle, mediaKey, d.item.key, subtitle, poster, backdrop, v.subtitles) },
+                        onDownload = if (v.downloadable) ({
+                            scope.launch {
+                                container.downloader.enqueue(playTitle, v.url, d.item.key, poster)
+                                Toast.makeText(ctx, "Download started — see Downloads", Toast.LENGTH_SHORT).show()
+                            }
+                        }) else null
+                    )
+                }
             }
         }
-
+        if (showProviders) {
+            Text("External viewing options", style = MaterialTheme.typography.labelLarge, color = TextDim)
+            ProvidersBlock(d.providers)
+        }
         if (sources.isNotEmpty()) {
             Text("Your sources", style = MaterialTheme.typography.labelLarge, color = TextDim)
             sources.forEach { s ->
+                val direct = PlayerLauncher.isDirect(s.url)
                 val isFile = s.url.startsWith("content://") || s.url.startsWith("file://")
                 SourceCard(
-                    icon = if (isFile) Icons.Filled.FolderOpen else Icons.Filled.Link, title = s.label,
-                    caption = if (isFile) "File on this device" else "Link",
+                    badge = if (direct) "FULL MOVIE" else "EXTERNAL", badgeColor = if (direct) KindFull else KindExternal, title = s.label,
+                    caption = if (isFile) "File on this device" else if (direct) "Direct link you added (plays in app)" else "Opens in your browser or provider app",
                     onPlay = { PlayerLauncher.openSource(ctx, s, playTitle, mediaKey, d.item.key, subtitle, poster, backdrop) },
                     onDelete = { vm.deleteSource(s.id) }
                 )
             }
         }
-
-        if (sources.isEmpty() && (!showFree || free.isEmpty())) {
-            Text(
-                "No playable source yet. Add a link you are authorized to use, or attach a video file from your device.",
-                color = TextDim, style = MaterialTheme.typography.bodySmall
-            )
+        if (sources.isEmpty() && verified.isEmpty() && free !is UiState.Loading) {
+            Text("No authorized full-length source is available for this title. Add a link you are authorized to use, or attach a video file from your device.", color = TextDim, style = MaterialTheme.typography.bodySmall)
         }
-
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { showAdd = true }) { Icon(Icons.Filled.Link, null); Spacer(Modifier.width(6.dp)); Text("Add link") }
             OutlinedButton(onClick = { picker.launch(arrayOf("video/*")) }) { Icon(Icons.Filled.FolderOpen, null); Spacer(Modifier.width(6.dp)); Text("Add file") }
         }
     }
-
     if (showAdd) AddLinkDialog(onDismiss = { showAdd = false }) { label, url ->
-        vm.addLink(mediaKey, label.ifBlank { Uri.parse(url).host ?: "Link" }, url)
-        showAdd = false
+        vm.addLink(mediaKey, label.ifBlank { Uri.parse(url).host ?: "Link" }, url); showAdd = false
     }
-}
-
-@Composable
-private fun SourceCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, caption: String,
-    onPlay: () -> Unit, onDownload: (() -> Unit)? = null, onDelete: (() -> Unit)? = null
-) {
-    Surface(shape = RoundedCornerShape(16.dp), color = CardColor, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(start = 14.dp, top = 6.dp, bottom = 6.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = VioletSoft)
-            Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge)
-                Text(caption, style = MaterialTheme.typography.labelSmall, color = TextDim)
-            }
-            onDownload?.let { IconButton(onClick = it) { Icon(Icons.Filled.Download, "Download") } }
-            onDelete?.let { IconButton(onClick = it) { Icon(Icons.Filled.Delete, "Remove") } }
-            FilledIconButton(onClick = onPlay, colors = IconButtonDefaults.filledIconButtonColors(containerColor = Violet)) {
-                Icon(Icons.Filled.PlayArrow, "Play")
-            }
-        }
-    }
-}
-
-@Composable
-private fun AddLinkDialog(onDismiss: () -> Unit, onAdd: (String, String) -> Unit) {
-    var label by remember { mutableStateOf("") }
-    var url by remember { mutableStateOf("") }
-    val valid = url.startsWith("https://") || url.startsWith("http://")
-    AlertDialog(
-        onDismissRequest = onDismiss, containerColor = Charcoal,
-        title = { Text("Add a source link") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(label, { label = it }, label = { Text("Name (optional)") }, singleLine = true)
-                OutlinedTextField(url, { url = it.trim() }, label = { Text("https:// link") }, singleLine = true, isError = url.isNotEmpty() && !valid)
-                Text(
-                    "Direct video files (.mp4, .m3u8, .mpd…) play in the app; other links open in your browser. Only add content you are authorized to watch.",
-                    style = MaterialTheme.typography.bodySmall, color = TextDim
-                )
-            }
-        },
-        confirmButton = { TextButton(onClick = { onAdd(label.trim(), url) }, enabled = valid) { Text("Add") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
-    )
 }
