@@ -23,13 +23,29 @@ data class MediaDto(
     @SerialName("first_air_date") val firstAirDate: String? = null,
     @SerialName("media_type") val mediaType: String? = null,
     @SerialName("genre_ids") val genreIds: List<Int> = emptyList(),
-    @SerialName("original_language") val originalLanguage: String? = null
+    @SerialName("original_language") val originalLanguage: String? = null,
+    val popularity: Double = 0.0,
+    val job: String? = null
 )
 
 @Serializable data class GenreDto(val id: Int, val name: String)
-@Serializable data class CastDto(val name: String, val character: String? = null, @SerialName("profile_path") val profilePath: String? = null)
-@Serializable data class CreditsDto(val cast: List<CastDto> = emptyList())
-@Serializable data class VideoDto(val key: String, val site: String? = null, val type: String? = null)
+@Serializable data class CastDto(val id: Int = 0, val name: String, val character: String? = null, @SerialName("profile_path") val profilePath: String? = null)
+@Serializable data class CrewDto(val id: Int = 0, val name: String, val job: String? = null)
+@Serializable data class CreditsDto(val cast: List<CastDto> = emptyList(), val crew: List<CrewDto> = emptyList())
+@Serializable data class CountryDto(val name: String? = null)
+@Serializable data class LanguageDto(@SerialName("english_name") val englishName: String? = null)
+@Serializable data class AltTitleDto(val title: String? = null)
+@Serializable data class AltTitlesDto(val titles: List<AltTitleDto> = emptyList(), val results: List<AltTitleDto> = emptyList())
+@Serializable data class PersonSummaryDto(val id: Int, val name: String, @SerialName("profile_path") val profilePath: String? = null, @SerialName("known_for_department") val knownForDepartment: String? = null)
+@Serializable data class MovieCreditsDto(val cast: List<MediaDto> = emptyList(), val crew: List<MediaDto> = emptyList())
+@Serializable data class PersonDto(
+    val id: Int, val name: String, val biography: String? = null, val birthday: String? = null,
+    @SerialName("place_of_birth") val placeOfBirth: String? = null,
+    @SerialName("profile_path") val profilePath: String? = null,
+    @SerialName("known_for_department") val knownForDepartment: String? = null,
+    @SerialName("movie_credits") val movieCredits: MovieCreditsDto? = null
+)
+@Serializable data class VideoDto(val key: String, val name: String? = null, val site: String? = null, val type: String? = null)
 @Serializable data class VideosDto(val results: List<VideoDto> = emptyList())
 @Serializable data class ProviderDto(@SerialName("provider_name") val name: String)
 
@@ -71,7 +87,17 @@ data class DetailDto(
     val seasons: List<SeasonSummaryDto> = emptyList(),
     val credits: CreditsDto? = null,
     val videos: VideosDto? = null,
-    @SerialName("watch/providers") val providers: WatchProvidersDto? = null
+    @SerialName("watch/providers") val providers: WatchProvidersDto? = null,
+    val popularity: Double = 0.0,
+    @SerialName("vote_count") val voteCount: Int = 0,
+    val status: String? = null,
+    @SerialName("original_title") val originalTitle: String? = null,
+    @SerialName("original_name") val originalName: String? = null,
+    @SerialName("production_countries") val productionCountries: List<CountryDto> = emptyList(),
+    @SerialName("spoken_languages") val spokenLanguages: List<LanguageDto> = emptyList(),
+    @SerialName("alternative_titles") val alternativeTitles: AltTitlesDto? = null,
+    val similar: PagedResponse<MediaDto>? = null,
+    val recommendations: PagedResponse<MediaDto>? = null
 )
 
 @Serializable
