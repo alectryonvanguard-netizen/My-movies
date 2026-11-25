@@ -45,11 +45,20 @@ data class SourceEntity(
 @Entity(tableName = "local_videos")
 data class LocalVideoEntity(@PrimaryKey val uri: String, val name: String, val addedAt: Long)
 
+/** status: QUEUED, RUNNING, PAUSED, COMPLETED, FAILED */
 @Entity(tableName = "downloads")
 data class DownloadEntity(
-    @PrimaryKey val dmId: Long,
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
     val url: String,
     val filePath: String,
+    val posterUrl: String?,
+    val mediaKey: String?,
+    val status: String,
+    val downloadedBytes: Long,
+    val totalBytes: Long,
     val addedAt: Long
 )
+
+@Entity(tableName = "search_history")
+data class SearchHistoryEntity(@PrimaryKey val term: String, val kind: String, val updatedAt: Long)
