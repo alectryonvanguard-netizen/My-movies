@@ -16,6 +16,7 @@ import coil.imageLoader
 import com.mymovie.app.appContainer
 import com.mymovie.app.data.TestResult
 import com.mymovie.app.notify.Notifier
+import com.mymovie.app.work.FastAlertsService
 import com.mymovie.app.data.TmdbAuth
 import com.mymovie.app.data.remote.Network
 import com.mymovie.app.ui.components.DropdownChip
@@ -47,8 +48,9 @@ fun SettingsScreen() {
     var aMovies by remember { mutableStateOf(p.alertMovies) }
     var aSports by remember { mutableStateOf(p.alertSports) }
     var aNews by remember { mutableStateOf(p.alertNews) }
+    var aFast by remember { mutableStateOf(p.fastMode) }
     var followed by remember { mutableStateOf(p.followedLeagues) }
-    var subs by remember { mutableStateOf(p.subreddits) }
+    var redditSubs by remember { mutableStateOf(p.subreddits) }
     var tg by remember { mutableStateOf(p.telegramChannels) }
     var newSub by remember { mutableStateOf("") }
     var newTg by remember { mutableStateOf("") }
@@ -136,6 +138,10 @@ fun SettingsScreen() {
         SwitchRow("Movie alerts", "Important: watchlist movies on release day. Normal: popular releases today.", aMovies) { aMovies = it; p.alertMovies = it }
         SwitchRow("Sports alerts", "Important: kick-off soon and final scores for competitions you follow (star icon in Live Sports).", aSports) { aSports = it; p.alertSports = it }
         SwitchRow("Daily headline digest", "One notification a day with a movie and a sports headline.", aNews) { aNews = it; p.alertNews = it }
+        SwitchRow("Fast alerts (every 2 minutes)", "Keeps a small notification on and uses more battery. Free data sources may still publish results later.", aFast) {
+            aFast = it; p.fastMode = it
+            if (it) FastAlertsService.start(ctx) else FastAlertsService.stop(ctx)
+        }
         if (followed.isNotEmpty()) {
             Text("Followed competitions", style = MaterialTheme.typography.labelLarge)
             followed.forEach { f ->
@@ -149,18 +155,18 @@ fun SettingsScreen() {
             if (Notifier.enabled(ctx)) { Notifier.send(ctx, "test", Notifier.HIGH, "My Movie alerts are on", "You will get release-day, match and score alerts here."); toast("Test sent") }
             else toast("Notifications are blocked. Allow them in Android settings.")
         }) { Text("Send a test notification") }
-        Text("Alerts are checked about every 30 minutes by polling free data sources. Android may delay them to save battery, and they are not real-time goal alerts.", style = MaterialTheme.typography.bodySmall, color = TextDim)
+        Text("Normal mode checks about every 30 minutes (Android does not allow background checks more often than every 15 minutes). Fast mode checks every 2 minutes. Both poll free data sources, so they are not real-time goal alerts.", style = MaterialTheme.typography.bodySmall, color = TextDim)
 
         HorizontalDivider()
         Text("Reddit & Telegram", style = MaterialTheme.typography.titleMedium)
         Text("Subreddit posts appear in News (headline and link only, opened inside the app). Public Telegram channels open inside the app as web pages. Private channels and Telegram login are not supported, and checks are not instant.", style = MaterialTheme.typography.bodySmall, color = TextDim)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
             OutlinedTextField(newSub, { newSub = it.trim().removePrefix("r/").removePrefix("/r/") }, singleLine = true, label = { Text("Subreddit, e.g. movies") }, modifier = Modifier.weight(1f))
-            Button(enabled = Regex("[A-Za-z0-9_]{2,21}").matches(newSub) && newSub !in subs, onClick = { subs = subs + newSub; p.subreddits = subs; newSub = "" }) { Text("Add") }
+            Button(enabled = Regex("[A-Za-z0-9_]{2,21}").matches(newSub) && newSub !in redditSubs, onClick = { redditSubs = redditSubs + newSub; p.subreddits = redditSubs; newSub = "" }) { Text("Add") }
         }
-        subs.forEach { s ->
+        redditSubs.forEach { s ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                Text("r/$s", Modifier.weight(1f)); TextButton(onClick = { subs = subs - s; p.subreddits = subs }) { Text("Remove") }
+                Text("r/$s", Modifier.weight(1f)); TextButton(onClick = { redditSubs = redditSubs - s; p.subreddits = redditSubs }) { Text("Remove") }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
