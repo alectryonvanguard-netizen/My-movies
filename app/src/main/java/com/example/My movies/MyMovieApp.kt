@@ -8,6 +8,8 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import androidx.work.*
 import com.mymovie.app.work.RefreshWorker
+import com.mymovie.app.work.AlertsWorker
+import com.mymovie.app.notify.Notifier
 import java.util.concurrent.TimeUnit
 
 class MyMovieApp : Application(), ImageLoaderFactory {
@@ -17,6 +19,12 @@ class MyMovieApp : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        Notifier.createChannels(this)
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "alerts", ExistingPeriodicWorkPolicy.KEEP,
+            PeriodicWorkRequestBuilder<AlertsWorker>(30, TimeUnit.MINUTES)
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()).build()
+        )
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "catalog_refresh", ExistingPeriodicWorkPolicy.KEEP,
             PeriodicWorkRequestBuilder<RefreshWorker>(6, TimeUnit.HOURS)
