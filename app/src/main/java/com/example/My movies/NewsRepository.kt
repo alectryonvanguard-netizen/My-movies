@@ -18,8 +18,8 @@ data class NewsItem(val title: String, val link: String, val source: String, val
 data class Feed(val source: String, val url: String, val category: String)
 
 /** Headlines come from publishers' public RSS feeds. Only the headline, picture and link are shown; articles open on the publisher's page. */
-class NewsRepository(private val client: OkHttpClient) {
-    val feeds = listOf(
+class NewsRepository(private val client: OkHttpClient, private val prefs: Prefs) {
+    private val baseFeeds = listOf(
         Feed("Variety", "https://variety.com/feed/", "Movies"),
         Feed("Deadline", "https://deadline.com/feed/", "Movies"),
         Feed("The Hollywood Reporter", "https://www.hollywoodreporter.com/feed/", "Movies"),
@@ -31,8 +31,10 @@ class NewsRepository(private val client: OkHttpClient) {
         Feed("BBC Rugby Union", "https://feeds.bbci.co.uk/sport/rugby-union/rss.xml", "Rugby"),
         Feed("BBC Formula 1", "https://feeds.bbci.co.uk/sport/formula1/rss.xml", "Formula 1")
     )
+    /** Built-in publisher feeds plus the subreddits you chose in Settings (public Reddit RSS, headline + link only). */
+    val feeds: List<Feed> get() = baseFeeds + prefs.subreddits.map { Feed("r/$it", "https://www.reddit.com/r/$it/.rss?limit=20", "Reddit") }
     private val sportsCats = setOf("Sports", "Football", "Cricket", "Tennis", "Golf", "Rugby", "Formula 1")
-    val categories = listOf("All", "Movies", "Sports", "Football", "Cricket", "Tennis", "Golf", "Rugby", "Formula 1")
+    val categories = listOf("All", "Movies", "Sports", "Football", "Cricket", "Tennis", "Golf", "Rugby", "Formula 1", "Reddit", "Telegram")
 
     suspend fun load(category: String): List<NewsItem> = withContext(Dispatchers.IO) {
         val chosen = feeds.filter {
@@ -44,7 +46,7 @@ class NewsRepository(private val client: OkHttpClient) {
     }
 
     private fun fetch(feed: Feed): List<NewsItem> {
-        val req = Request.Builder().url(feed.url).header("User-Agent", "MyMovie/1.0 (personal news reader)").build()
+        val req = Request.Builder().url(feed.url).header("User-Agent", "android:com.mymovie.app:1.0 (personal news reader)").build()
         client.newCall(req).execute().use { r ->
             if (!r.isSuccessful) return emptyList()
             return parse(r.body?.byteStream() ?: return emptyList(), feed)
