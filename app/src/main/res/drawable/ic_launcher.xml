@@ -4,55 +4,58 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Outer blue ring & white disc -->
+    <!-- Outer blue ring & crisp white face -->
     <path
         android:fillColor="#FFFFFF"
         android:strokeColor="#1557B0"
-        android:strokeWidth="3.5"
+        android:strokeWidth="4"
         android:pathData="M54,6A48,48 0 1,1 53.99,6Z" />
 
-    <!-- Subtle sports ball arc lines in light blue -->
+    <!-- Subtle top sports-ball arcs behind emblem -->
     <path
         android:fillColor="#00000000"
         android:strokeColor="#64A5E8"
-        android:strokeWidth="2"
-        android:pathData="M24,30 Q54,18 84,30" />
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:pathData="M23,32 Q54,18 85,32" />
     <path
         android:fillColor="#00000000"
         android:strokeColor="#64A5E8"
-        android:strokeWidth="2"
-        android:pathData="M36,14 Q52,32 46,56" />
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:pathData="M35,13 Q50,30 44,50" />
     <path
         android:fillColor="#00000000"
         android:strokeColor="#64A5E8"
-        android:strokeWidth="2"
-        android:pathData="M70,13 Q58,30 64,48" />
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:pathData="M73,13 Q58,30 64,46" />
 
-    <!-- Blue filmstrip ribbon forming an 'M' on the left -->
+    <!-- Blue filmstrip 'M' on the left -->
     <path
         android:fillColor="#1557B0"
-        android:pathData="M24,78 L27,36 C27.5,31 33,31 35,35 L46,55 L56,42 C59,39 63,41 64,45 L68,66 L61,68 L58,52 L48,65 C46,68 42,67 40,64 L33,50 L31,79 Z" />
+        android:pathData="M22,78 L25,35 C25.4,30.5 31.5,30 34,34.5 L45.5,54 L56.5,41 C59.5,37.8 64.5,40 65.5,44.8 L69.5,65 L61.5,67 L58.5,51.5 L47.5,64.5 C45,67.5 40.5,66.8 38.5,63.2 L32,50.5 L30,79 Z" />
 
-    <!-- Film perforations along the blue strip -->
+    <!-- Film perforations along the left 'M' -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M29,40 L31,41 L30.8,44 L28.8,43 Z
-                          M28.5,47 L30.5,48 L30.3,51 L28.3,50 Z
-                          M28,54 L30,55 L29.8,58 L27.8,57 Z
-                          M27.5,61 L29.5,62 L29.3,65 L27.3,64 Z
-                          M27,68 L29,69 L28.8,72 L26.8,71 Z" />
+        android:pathData="M27.2,39 L29.6,39.8 L29.2,43.2 L26.8,42.4 Z
+                          M26.7,46.5 L29.1,47.3 L28.7,50.7 L26.3,49.9 Z
+                          M26.2,54 L28.6,54.8 L28.2,58.2 L25.8,57.4 Z
+                          M25.7,61.5 L28.1,62.3 L27.7,65.7 L25.3,64.9 Z
+                          M25.2,69 L27.6,69.8 L27.2,73.2 L24.8,72.4 Z" />
 
-    <!-- Orange dynamic ribbon forming an 'S' / sports swoosh -->
+    <!-- Orange dynamic 'S' ribbon sweeping across the right and base -->
     <path
         android:fillColor="#F97316"
-        android:pathData="M43,85 C43,77 52,72 62,65 C71,59 75,51 71,44 C68,38 64,34 69,30 C74,26 83,29 85,35 C87,42 82,53 71,61 C60,69 53,75 55,81 C56,84 52,87 43,85 Z" />
+        android:pathData="M39,84 C39,75.5 49.5,70.5 60.5,63.5 C71.5,56.5 76,48.5 72,41 C69,35.5 65.5,32 70.5,27.5 C75.5,23 84.5,26.5 86.5,33.5 C88.8,41.5 82.5,53.5 70,62.5 C58,71 50.5,75.5 52.5,81.5 C53.8,85 48.5,87.5 39,84 Z" />
 
     <!-- Film perforations along the orange ribbon -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M76,34 L79,35 L77.5,38 L74.5,37 Z
-                          M74,41 L77,42.5 L75,45.5 L72,44 Z
-                          M70,48 L73,49.8 L70.5,52.8 L67.5,51 Z
-                          M64.5,55 L67.5,57 L64.5,59.8 L61.5,57.8 Z
-                          M58.5,61.5 L61.2,63.8 L58,66.2 L55.3,64 Z" />
+        android:pathData="M77.5,31.5 L80.5,32.8 L78.8,36.2 L75.8,34.9 Z
+                          M75,39 L78,40.6 L75.8,43.8 L72.8,42.2 Z
+                          M70.5,46.5 L73.5,48.4 L70.8,51.6 L67.8,49.7 Z
+                          M64.5,54 L67.5,56.2 L64.2,59.2 L61.2,57 Z
+                          M58,61 L60.8,63.5 L57.2,66.2 L54.4,63.7 Z" />
 </vector>
