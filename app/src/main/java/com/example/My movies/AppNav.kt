@@ -38,6 +38,7 @@ enum class Dest(val route: String, val label: String, val icon: ImageVector) {
     Tv("tv", "TV Series", Icons.Filled.Tv),
     Anime("anime", "Anime", Icons.Filled.Face),
     Sports("sports", "Live Sports", Icons.Filled.SportsSoccer),
+    News("news", "News", Icons.Filled.Campaign),
     Discover("discover", "Discover", Icons.Filled.Explore),
     Library("library", "My Library", Icons.Filled.Bookmark),
     Downloads("downloads", "Downloads", Icons.Filled.Download),
@@ -113,6 +114,7 @@ fun AppNav() {
                 composable("person/{id}", arguments = listOf(navArgument("id") { type = NavType.IntType })) { e ->
                     PersonScreen(e.arguments?.getInt("id") ?: 0, { nav.popBackStack() }, { openItem(it.type, it.id) }, { go(Dest.Settings) })
                 }
+                composable("news") { NewsScreen() }
                 composable("library") { LibraryScreen({ openItem(it.type, it.id) }, { q -> nav.navigate("search?q=${Uri.encode(q)}") }) }
                 composable("downloads") { DownloadsScreen { t, id -> openItem(t, id) } }
                 composable("settings") { SettingsScreen() }
