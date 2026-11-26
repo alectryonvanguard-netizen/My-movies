@@ -37,6 +37,7 @@ class NewsViewModel(private val c: AppContainer) : ViewModel() {
     var category by mutableStateOf("All"); private set
     val state = MutableStateFlow<UiState<List<NewsItem>>>(UiState.Loading)
     val categories get() = c.news.categories
+    fun channels() = c.prefs.telegramChannels
     init { load() }
     fun load() { state.value = UiState.Loading; viewModelScope.launch { state.value = runUi { c.news.load(category) } } }
     fun select(cat: String) { category = cat; load() }
@@ -55,7 +56,7 @@ fun NewsScreen() {
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(vm.categories) { c -> FilterChip(vm.category == c, { vm.select(c) }, { Text(c) }) }
         }
-        when (val s = state) {
+        if (vm.category == "Telegram") TelegramChannels(vm.channels()) else when (val s = state) {
             UiState.Loading -> CenteredLoading()
             is UiState.Error -> ErrorView(s, { vm.load() }, {})
             is UiState.Success -> if (s.data.isEmpty()) Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
@@ -74,6 +75,28 @@ fun NewsScreen() {
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TelegramChannels(channels: List<String>) {
+    val ctx = LocalContext.current
+    if (channels.isEmpty()) {
+        Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+            Text("Add public Telegram channels in Settings → Reddit & Telegram. They open inside the app.", color = TextDim)
+        }
+        return
+    }
+    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item { Text("Public channels open as web pages inside the app. Private channels and logins aren't supported.", style = MaterialTheme.typography.bodySmall, color = TextDim) }
+        items(channels, key = { it }) { name ->
+            Surface(shape = RoundedCornerShape(16.dp), color = CardColor, modifier = Modifier.fillMaxWidth().clickable { WebActivity.open(ctx, "https://t.me/s/$name", "Telegram · $name") }) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("@$name", style = MaterialTheme.typography.titleMedium)
+                    Text("Open latest posts", style = MaterialTheme.typography.labelSmall, color = VioletSoft)
                 }
             }
         }
