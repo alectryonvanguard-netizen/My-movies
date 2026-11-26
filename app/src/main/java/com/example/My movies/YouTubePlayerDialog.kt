@@ -1,8 +1,5 @@
 package com.mymovie.app.ui.components
 
-import com.mymovie.app.web.WebActivity
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -17,28 +14,38 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.mymovie.app.data.VideoInfo
+import com.mymovie.app.web.WebActivity
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 
 /**
- * Plays a YouTube trailer/clip inside the app using YouTube's official embedded player.
- * YouTube controls the player, its quality menu and any ads it shows. If the video owner
- * disallows embedding, a button opens it in YouTube instead.
+ * Plays a trailer/clip inside the app with YouTube's embedded player. If a video is blocked in your
+ * country or can't be embedded, it automatically tries the next trailer in [queue] instead of dead-ending.
+ * Region blocks are never bypassed.
  */
 @Composable
-fun YouTubePlayerDialog(videoId: String, title: String, onClose: () -> Unit) {
+fun YouTubePlayerDialog(queue: List<VideoInfo>, onClose: () -> Unit) {
     val ctx = LocalContext.current
     val owner = LocalLifecycleOwner.current
-    var failed by remember { mutableStateOf(false) }
+    var index by remember { mutableIntStateOf(0) }
+    var skipped by remember { mutableIntStateOf(0) }
+    var allFailed by remember { mutableStateOf(false) }
     val view = remember { YouTubePlayerView(ctx) }
+    val current = queue[index.coerceIn(0, queue.lastIndex)]
 
-    DisposableEffect(videoId) {
+    DisposableEffect(Unit) {
         owner.lifecycle.addObserver(view)
         view.addYouTubePlayerListener(object : AbstractYouTubePlayerListener() {
-            override fun onReady(youTubePlayer: YouTubePlayer) { youTubePlayer.loadVideo(videoId, 0f) }
-            override fun onError(youTubePlayer: YouTubePlayer, error: PlayerConstants.PlayerError) { failed = true }
+            override fun onReady(youTubePlayer: YouTubePlayer) { youTubePlayer.loadVideo(queue[index].key, 0f) }
+            override fun onError(youTubePlayer: YouTubePlayer, error: PlayerConstants.PlayerError) {
+                if (index + 1 < queue.size) {
+                    index += 1; skipped += 1
+                    youTubePlayer.loadVideo(queue[index].key, 0f)
+                } else allFailed = true
+            }
         })
         onDispose { owner.lifecycle.removeObserver(view); view.release() }
     }
@@ -46,16 +53,20 @@ fun YouTubePlayerDialog(videoId: String, title: String, onClose: () -> Unit) {
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(Modifier.fillMaxWidth().background(Color.Black).padding(bottom = 8.dp)) {
             Row(Modifier.fillMaxWidth().padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(title, Modifier.weight(1f), maxLines = 1, color = Color.White)
+                Text(current.name, Modifier.weight(1f), maxLines = 1, color = Color.White)
                 TextButton(onClick = onClose) { Text("Close") }
             }
-            if (failed) {
+            if (allFailed) {
                 Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("The embedded player can't play this video (embedding is turned off or it is unavailable). You can open its YouTube page inside the app instead.", color = Color.White, textAlign = TextAlign.Center)
-                    Button(onClick = { WebActivity.open(ctx, "https://m.youtube.com/watch?v=$videoId", title); onClose() }) { Text("Watch the YouTube page here") }
+                    Text(
+                        "None of this title's trailers could be played here. They may be blocked in your country by the uploader, or embedding is turned off. Region blocks can't be bypassed.",
+                        color = Color.White, textAlign = TextAlign.Center
+                    )
+                    OutlinedButton(onClick = { WebActivity.open(ctx, "https://m.youtube.com/watch?v=${current.key}", current.name); onClose() }) { Text("Try the YouTube page inside the app") }
                 }
             } else {
                 AndroidView(factory = { view }, modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f))
+                if (skipped > 0) Text("Skipped $skipped unavailable video(s) and moved to the next one.", color = Color(0xFFA3A3B5), modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
             }
             Text("Promotional video from YouTube, not the full movie.", color = Color(0xFFA3A3B5), modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
         }
