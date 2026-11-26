@@ -29,7 +29,7 @@ object Network {
         host.endsWith("thesportsdb.com") -> when {
             path.contains("livescore") -> 20
             path.contains("eventsday") -> 120
-            path.contains("eventsnext") || path.contains("eventspast") -> 300
+            path.contains("eventsnext") || path.contains("eventspast") -> 90
             path.contains("lookuptable") -> 900
             path.contains("all_leagues") -> 86400
             path.contains("search") -> 600
