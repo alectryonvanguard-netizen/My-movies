@@ -52,4 +52,36 @@ class Prefs(context: Context) {
     var subtitleLang: String
         get() = sp.getString("sub_lang", "") ?: ""
         set(v) { sp.edit().putString("sub_lang", v).apply() }
+
+    // Notifications
+    var alertMovies: Boolean
+        get() = sp.getBoolean("alert_movies", true)
+        set(v) { sp.edit().putBoolean("alert_movies", v).apply() }
+    var alertSports: Boolean
+        get() = sp.getBoolean("alert_sports", true)
+        set(v) { sp.edit().putBoolean("alert_sports", v).apply() }
+    var alertNews: Boolean
+        get() = sp.getBoolean("alert_news", false)
+        set(v) { sp.edit().putBoolean("alert_news", v).apply() }
+    /** Entries look like provider|id|sport|name. */
+    var followedLeagues: Set<String>
+        get() = sp.getStringSet("followed", emptySet())?.toSet() ?: emptySet()
+        set(v) { sp.edit().putStringSet("followed", v).apply() }
+
+    /** True the first time a key is seen, so each alert is sent once. */
+    fun markNotified(key: String): Boolean {
+        val set = (sp.getStringSet("notified", emptySet()) ?: emptySet()).toMutableSet()
+        if (key in set) return false
+        if (set.size > 400) set.clear()
+        set.add(key)
+        sp.edit().putStringSet("notified", set).apply()
+        return true
+    }
+
+    fun due(name: String, intervalMs: Long): Boolean {
+        val now = System.currentTimeMillis()
+        if (now - sp.getLong("last_$name", 0L) < intervalMs) return false
+        sp.edit().putLong("last_$name", now).apply()
+        return true
+    }
 }
