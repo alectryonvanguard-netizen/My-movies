@@ -1,82 +1,58 @@
-
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Cinematic dark background -->
+    <!-- Outer blue ring & white disc -->
     <path
-        android:fillColor="#080D19"
-        android:pathData="M0,0 H108 V108 H0 Z" />
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#1557B0"
+        android:strokeWidth="3.5"
+        android:pathData="M54,6A48,48 0 1,1 53.99,6Z" />
 
-    <!-- Outer metallic film reel -->
+    <!-- Subtle sports ball arc lines in light blue -->
     <path
-        android:fillColor="#263449"
-        android:strokeColor="#AAB8CB"
-        android:strokeWidth="2.5"
-        android:pathData="M54,27
-            A29,29 0,1 1,54 85
-            A29,29 0,1 1,54 27 Z" />
-
-    <!-- Inner reel surface -->
+        android:fillColor="#00000000"
+        android:strokeColor="#64A5E8"
+        android:strokeWidth="2"
+        android:pathData="M24,30 Q54,18 84,30" />
     <path
-        android:fillColor="#101C30"
-        android:pathData="M54,33
-            A23,23 0,1 1,54 79
-            A23,23 0,1 1,54 33 Z" />
-
-    <!-- Reel openings -->
+        android:fillColor="#00000000"
+        android:strokeColor="#64A5E8"
+        android:strokeWidth="2"
+        android:pathData="M36,14 Q52,32 46,56" />
     <path
-        android:fillColor="#AAB8CB"
-        android:pathData="M49,37
-            A5,5 0,1 1,59 37
-            A5,5 0,1 1,49 37 Z" />
+        android:fillColor="#00000000"
+        android:strokeColor="#64A5E8"
+        android:strokeWidth="2"
+        android:pathData="M70,13 Q58,30 64,48" />
 
+    <!-- Blue filmstrip ribbon forming an 'M' on the left -->
     <path
-        android:fillColor="#AAB8CB"
-        android:pathData="M49,75
-            A5,5 0,1 1,59 75
-            A5,5 0,1 1,49 75 Z" />
+        android:fillColor="#1557B0"
+        android:pathData="M24,78 L27,36 C27.5,31 33,31 35,35 L46,55 L56,42 C59,39 63,41 64,45 L68,66 L61,68 L58,52 L48,65 C46,68 42,67 40,64 L33,50 L31,79 Z" />
 
+    <!-- Film perforations along the blue strip -->
     <path
-        android:fillColor="#AAB8CB"
-        android:pathData="M34,51
-            A5,5 0,1 1,44 51
-            A5,5 0,1 1,34 51 Z" />
+        android:fillColor="#FFFFFF"
+        android:pathData="M29,40 L31,41 L30.8,44 L28.8,43 Z
+                          M28.5,47 L30.5,48 L30.3,51 L28.3,50 Z
+                          M28,54 L30,55 L29.8,58 L27.8,57 Z
+                          M27.5,61 L29.5,62 L29.3,65 L27.3,64 Z
+                          M27,68 L29,69 L28.8,72 L26.8,71 Z" />
 
+    <!-- Orange dynamic ribbon forming an 'S' / sports swoosh -->
     <path
-        android:fillColor="#AAB8CB"
-        android:pathData="M64,51
-            A5,5 0,1 1,74 51
-            A5,5 0,1 1,64 51 Z" />
+        android:fillColor="#F97316"
+        android:pathData="M43,85 C43,77 52,72 62,65 C71,59 75,51 71,44 C68,38 64,34 69,30 C74,26 83,29 85,35 C87,42 82,53 71,61 C60,69 53,75 55,81 C56,84 52,87 43,85 Z" />
 
-    <!-- Central play symbol -->
+    <!-- Film perforations along the orange ribbon -->
     <path
-        android:fillColor="#36CFFF"
-        android:strokeColor="#B9F1FF"
-        android:strokeWidth="1"
-        android:pathData="M47,44 L68,54 L47,65 Z" />
-
-    <!-- Clapperboard top -->
-    <path
-        android:fillColor="#DCE5F0"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.5"
-        android:pathData="M27,17 L78,17 L83,29 L32,29 Z" />
-
-    <!-- Clapperboard dark stripes -->
-    <path
-        android:fillColor="#18263A"
-        android:pathData="M39,17 L49,17 L44,29 L34,29 Z" />
-
-    <path
-        android:fillColor="#18263A"
-        android:pathData="M62,17 L72,17 L77,29 L67,29 Z" />
-
-    <!-- Bottom cinematic accent -->
-    <path
-        android:fillColor="#36CFFF"
-        android:pathData="M37,91 H71 V94 H37 Z" />
-
+        android:fillColor="#FFFFFF"
+        android:pathData="M76,34 L79,35 L77.5,38 L74.5,37 Z
+                          M74,41 L77,42.5 L75,45.5 L72,44 Z
+                          M70,48 L73,49.8 L70.5,52.8 L67.5,51 Z
+                          M64.5,55 L67.5,57 L64.5,59.8 L61.5,57.8 Z
+                          M58.5,61.5 L61.2,63.8 L58,66.2 L55.3,64 Z" />
 </vector>
