@@ -2,6 +2,7 @@
 
 package com.mymovie.app.ui.screens
 
+import com.mymovie.app.web.WebActivity
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -326,8 +327,8 @@ private fun EventSheet(vm: SportsViewModel, e: SportEvent) {
                 )
             }
             e.videoUrl?.let { v ->
-                SourceCard(badge = "HIGHLIGHTS", badgeColor = KindClip, title = "Highlights from the data provider", caption = "Opens externally (not a live broadcast)",
-                    onPlay = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(v))) } })
+                SourceCard(badge = "HIGHLIGHTS", badgeColor = KindClip, title = "Highlights from the data provider", caption = "Opens inside the app (not a live broadcast)",
+                    onPlay = { WebActivity.open(ctx, v, "Highlights") })
             }
             if (sources.isEmpty()) Text("No authorized live or replay video is available for this event. Scores, schedule and standings keep updating here. Broadcast rights are separate from sports data.", style = MaterialTheme.typography.bodySmall, color = TextDim)
             OutlinedButton(onClick = { showAdd = true }) { Text("Add official / licensed stream link") }
