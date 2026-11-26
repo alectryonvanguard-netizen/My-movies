@@ -45,7 +45,7 @@ class AppContainer(val context: Context) {
 
     val repo = MovieRepository(tmdb, archive, db.dao(), prefs)
     val sports = SportsRepository(sportsDb, footballData, prefs)
-    val news = NewsRepository(client)
+    val news = NewsRepository(client, prefs)
     val downloader = Downloader(context, db.dao(), client, appScope)
 
     init { appScope.launch { db.dao().pauseAllActive() } } // downloads interrupted by a process death become resumable
