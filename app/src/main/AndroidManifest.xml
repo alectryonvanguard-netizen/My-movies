@@ -30,6 +30,11 @@
             android:exported="false"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode"
             android:screenOrientation="sensorLandscape" />
+        <activity
+            android:name=".web.WebActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode" />
+
         <service
             android:name=".downloads.DownloadService"
             android:exported="false"
