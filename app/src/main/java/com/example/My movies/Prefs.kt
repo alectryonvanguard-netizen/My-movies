@@ -84,4 +84,13 @@ class Prefs(context: Context) {
         sp.edit().putLong("last_$name", now).apply()
         return true
     }
+
+    /** Public subreddits shown in News. */
+    var subreddits: List<String>
+        get() = sp.getString("subs", null)?.split(",")?.filter { it.isNotBlank() } ?: listOf("movies", "boxoffice", "soccer", "nba")
+        set(v) { sp.edit().putString("subs", v.joinToString(",")).apply() }
+    /** Public Telegram channel usernames, opened inside the app as web pages. */
+    var telegramChannels: List<String>
+        get() = sp.getString("tg", "")?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+        set(v) { sp.edit().putString("tg", v.joinToString(",")).apply() }
 }
