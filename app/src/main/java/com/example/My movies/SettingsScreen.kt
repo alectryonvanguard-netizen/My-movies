@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import coil.imageLoader
 import com.mymovie.app.appContainer
 import com.mymovie.app.data.TestResult
+import com.mymovie.app.notify.Notifier
 import com.mymovie.app.data.TmdbAuth
 import com.mymovie.app.data.remote.Network
 import com.mymovie.app.ui.components.DropdownChip
@@ -43,6 +44,10 @@ fun SettingsScreen() {
     var preset by remember { mutableStateOf(p.qualityPreset) }
     var audio by remember { mutableStateOf(p.audioLang) }
     var subs by remember { mutableStateOf(p.subtitleLang) }
+    var aMovies by remember { mutableStateOf(p.alertMovies) }
+    var aSports by remember { mutableStateOf(p.alertSports) }
+    var aNews by remember { mutableStateOf(p.alertNews) }
+    var followed by remember { mutableStateOf(p.followedLeagues) }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Settings", style = MaterialTheme.typography.headlineMedium)
@@ -115,6 +120,32 @@ fun SettingsScreen() {
             }
         }
         Text("Quality presets only apply to sources that offer several qualities; the player lists what each source really provides.", style = MaterialTheme.typography.bodySmall, color = TextDim)
+
+        HorizontalDivider()
+        Text("Notifications", style = MaterialTheme.typography.titleMedium)
+        @Composable fun SwitchRow(label: String, sub: String, on: Boolean, change: (Boolean) -> Unit) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) { Text(label, style = MaterialTheme.typography.labelLarge); Text(sub, style = MaterialTheme.typography.bodySmall, color = TextDim) }
+                Switch(on, change)
+            }
+        }
+        SwitchRow("Movie alerts", "Important: watchlist movies on release day. Normal: popular releases today.", aMovies) { aMovies = it; p.alertMovies = it }
+        SwitchRow("Sports alerts", "Important: kick-off soon and final scores for competitions you follow (star icon in Live Sports).", aSports) { aSports = it; p.alertSports = it }
+        SwitchRow("Daily headline digest", "One notification a day with a movie and a sports headline.", aNews) { aNews = it; p.alertNews = it }
+        if (followed.isNotEmpty()) {
+            Text("Followed competitions", style = MaterialTheme.typography.labelLarge)
+            followed.forEach { f ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Text(f.split("|").getOrElse(3) { f }, Modifier.weight(1f))
+                    TextButton(onClick = { followed = followed - f; p.followedLeagues = followed }) { Text("Unfollow") }
+                }
+            }
+        }
+        OutlinedButton(onClick = {
+            if (Notifier.enabled(ctx)) { Notifier.send(ctx, "test", Notifier.HIGH, "My Movie alerts are on", "You will get release-day, match and score alerts here."); toast("Test sent") }
+            else toast("Notifications are blocked. Allow them in Android settings.")
+        }) { Text("Send a test notification") }
+        Text("Alerts are checked about every 30 minutes by polling free data sources. Android may delay them to save battery, and they are not real-time goal alerts.", style = MaterialTheme.typography.bodySmall, color = TextDim)
 
         HorizontalDivider()
         Text("Content language & region", style = MaterialTheme.typography.titleMedium)
