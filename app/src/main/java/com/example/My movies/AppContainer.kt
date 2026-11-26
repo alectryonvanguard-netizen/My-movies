@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.mymovie.app.data.MovieRepository
 import com.mymovie.app.data.Prefs
 import com.mymovie.app.data.local.AppDatabase
+import com.mymovie.app.data.NewsRepository
 import com.mymovie.app.data.SportsRepository
 import com.mymovie.app.downloads.Downloader
 import com.mymovie.app.data.remote.FootballDataApi
@@ -44,6 +45,7 @@ class AppContainer(val context: Context) {
 
     val repo = MovieRepository(tmdb, archive, db.dao(), prefs)
     val sports = SportsRepository(sportsDb, footballData, prefs)
+    val news = NewsRepository(client)
     val downloader = Downloader(context, db.dao(), client, appScope)
 
     init { appScope.launch { db.dao().pauseAllActive() } } // downloads interrupted by a process death become resumable
