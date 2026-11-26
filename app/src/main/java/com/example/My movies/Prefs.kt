@@ -93,4 +93,8 @@ class Prefs(context: Context) {
     var telegramChannels: List<String>
         get() = sp.getString("tg", "")?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
         set(v) { sp.edit().putString("tg", v.joinToString(",")).apply() }
+
+    var fastMode: Boolean
+        get() = sp.getBoolean("fast_mode", false)
+        set(v) { sp.edit().putBoolean("fast_mode", v).apply() }
 }
