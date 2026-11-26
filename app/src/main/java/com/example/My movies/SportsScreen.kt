@@ -19,6 +19,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -115,6 +117,15 @@ class SportsViewModel(private val c: AppContainer, sel: String?) : ViewModel() {
         }
     }
 
+    var followed by mutableStateOf(c.prefs.followedLeagues); private set
+    private fun leagueKey(l: SportLeague) = listOf(l.provider, l.id, l.sport, l.name).joinToString("|")
+    fun isFollowed(l: SportLeague) = leagueKey(l) in followed
+    fun toggleFollow(l: SportLeague) {
+        val k = leagueKey(l)
+        followed = if (k in followed) followed - k else followed + k
+        c.prefs.followedLeagues = followed
+    }
+
     fun forceRefresh() { Network.forceRefresh(); loadLeagues() }
 
     fun open(e: SportEvent) {
@@ -144,6 +155,10 @@ fun SportsScreen(sel: String?, onOpenSettings: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("Live Sports", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+            vm.league?.let { l ->
+                val on = vm.isFollowed(l)
+                IconButton(onClick = { vm.toggleFollow(l) }) { Icon(if (on) Icons.Filled.Star else Icons.Filled.StarBorder, if (on) "Stop alerts for this competition" else "Get alerts for this competition") }
+            }
             IconButton(onClick = { vm.forceRefresh() }) { Icon(Icons.Filled.Refresh, "Refresh") }
         }
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
