@@ -48,6 +48,10 @@ fun SettingsScreen() {
     var aSports by remember { mutableStateOf(p.alertSports) }
     var aNews by remember { mutableStateOf(p.alertNews) }
     var followed by remember { mutableStateOf(p.followedLeagues) }
+    var subs by remember { mutableStateOf(p.subreddits) }
+    var tg by remember { mutableStateOf(p.telegramChannels) }
+    var newSub by remember { mutableStateOf("") }
+    var newTg by remember { mutableStateOf("") }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Settings", style = MaterialTheme.typography.headlineMedium)
@@ -146,6 +150,28 @@ fun SettingsScreen() {
             else toast("Notifications are blocked. Allow them in Android settings.")
         }) { Text("Send a test notification") }
         Text("Alerts are checked about every 30 minutes by polling free data sources. Android may delay them to save battery, and they are not real-time goal alerts.", style = MaterialTheme.typography.bodySmall, color = TextDim)
+
+        HorizontalDivider()
+        Text("Reddit & Telegram", style = MaterialTheme.typography.titleMedium)
+        Text("Subreddit posts appear in News (headline and link only, opened inside the app). Public Telegram channels open inside the app as web pages. Private channels and Telegram login are not supported, and checks are not instant.", style = MaterialTheme.typography.bodySmall, color = TextDim)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            OutlinedTextField(newSub, { newSub = it.trim().removePrefix("r/").removePrefix("/r/") }, singleLine = true, label = { Text("Subreddit, e.g. movies") }, modifier = Modifier.weight(1f))
+            Button(enabled = Regex("[A-Za-z0-9_]{2,21}").matches(newSub) && newSub !in subs, onClick = { subs = subs + newSub; p.subreddits = subs; newSub = "" }) { Text("Add") }
+        }
+        subs.forEach { s ->
+            Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Text("r/$s", Modifier.weight(1f)); TextButton(onClick = { subs = subs - s; p.subreddits = subs }) { Text("Remove") }
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            OutlinedTextField(newTg, { newTg = it.trim().removePrefix("https://t.me/").removePrefix("@") }, singleLine = true, label = { Text("Public Telegram channel") }, modifier = Modifier.weight(1f))
+            Button(enabled = Regex("[A-Za-z0-9_]{5,32}").matches(newTg) && newTg !in tg, onClick = { tg = tg + newTg; p.telegramChannels = tg; newTg = "" }) { Text("Add") }
+        }
+        tg.forEach { s ->
+            Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Text("@$s", Modifier.weight(1f)); TextButton(onClick = { tg = tg - s; p.telegramChannels = tg }) { Text("Remove") }
+            }
+        }
 
         HorizontalDivider()
         Text("Content language & region", style = MaterialTheme.typography.titleMedium)
