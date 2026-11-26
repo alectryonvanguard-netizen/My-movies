@@ -245,7 +245,10 @@ private fun DetailContent(vm: DetailViewModel, d: MediaDetail, onItem: (MediaIte
         item { MediaRow("Recommended", d.recommended, onItem) }
     }
 
-    playingVideo?.let { v -> YouTubePlayerDialog(v.key, v.name) { playingVideo = null } }
+    playingVideo?.let { v ->
+        val queue = listOf(v) + d.videos.filter { it.key != v.key && (it.kind == VideoKind.TRAILER || it.kind == VideoKind.TEASER) }
+        YouTubePlayerDialog(queue) { playingVideo = null }
+    }
 
     sheet?.let { (season, ep) ->
         ModalBottomSheet(onDismissRequest = { sheet = null }, containerColor = Charcoal) {
