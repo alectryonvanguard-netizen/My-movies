@@ -10,6 +10,7 @@ import androidx.work.*
 import com.mymovie.app.work.RefreshWorker
 import com.mymovie.app.work.AlertsWorker
 import com.mymovie.app.notify.Notifier
+import com.mymovie.app.work.FastAlertsService
 import java.util.concurrent.TimeUnit
 
 class MyMovieApp : Application(), ImageLoaderFactory {
@@ -20,6 +21,7 @@ class MyMovieApp : Application(), ImageLoaderFactory {
         super.onCreate()
         container = AppContainer(this)
         Notifier.createChannels(this)
+        if (container.prefs.fastMode) FastAlertsService.start(this)
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "alerts", ExistingPeriodicWorkPolicy.KEEP,
             PeriodicWorkRequestBuilder<AlertsWorker>(30, TimeUnit.MINUTES)
